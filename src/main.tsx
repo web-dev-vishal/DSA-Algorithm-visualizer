@@ -3,9 +3,13 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
 
-// Apply dark mode to <html> before first render to avoid flash
-const storedDark = localStorage.getItem("algviz_dark");
+/**
+ * Apply dark mode to <html> before first paint to prevent FOUC.
+ * Uses localStorage preference, falls back to system preference.
+ */
+const storedDark  = localStorage.getItem("algviz_dark");
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
 if (storedDark === "1" || (storedDark === null && prefersDark)) {
   document.documentElement.classList.add("dark");
 }
