@@ -27,12 +27,12 @@ export default defineConfig([
   // ── Ignore patterns ───────────────────────────────────────────────
   globalIgnores(["dist/", "node_modules/", "*.cjs"]),
 
-  // ── Plain JS files (vite config, etc.) ───────────────────────────
+  // ── Plain JS / config files (vite.config, eslint.config) ────────
   {
-    files: ["**/*.{js,jsx}"],
+    files: ["**/*.{js,jsx}", "vite.config.ts"],
     extends: [js.configs.recommended],
     languageOptions: {
-      globals: globals.browser,
+      globals: { ...globals.browser, ...globals.node },
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
     plugins: {
@@ -44,9 +44,9 @@ export default defineConfig([
     },
   },
 
-  // ── TypeScript + TSX files ────────────────────────────────────────
+  // ── TypeScript + TSX source files ────────────────────────────────
   {
-    files: ["**/*.{ts,tsx}"],
+    files: ["src/**/*.{ts,tsx}"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {

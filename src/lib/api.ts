@@ -149,6 +149,7 @@ export async function analyzeAlgorithm(
   code: string,
   model: string,
   apiKey: string,
+  systemPrompt: string,
   customInput?: string,
 ): Promise<AlgorithmAnalysis> {
   let userMsg = "Analyze this DSA code and return the JSON:\n\n" + code;
@@ -163,7 +164,7 @@ export async function analyzeAlgorithm(
       temperature: 0.1,
       max_tokens: 8000,
       messages: [
-        // System prompt is passed by the caller to keep this layer generic
+        { role: "system", content: systemPrompt },
         { role: "user", content: userMsg },
       ],
     },

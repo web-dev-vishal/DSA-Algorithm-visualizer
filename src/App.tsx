@@ -38,8 +38,13 @@ function getStoredKey(): string {
   catch { return (import.meta.env.VITE_groqApi as string | undefined) ?? ""; }
 }
 function saveKey(key: string): void {
-  try { key ? sessionStorage.setItem(API_KEY_SESSION_KEY, key) : sessionStorage.removeItem(API_KEY_SESSION_KEY); }
-  catch { /* ignore */ }
+  try {
+    if (key) {
+      sessionStorage.setItem(API_KEY_SESSION_KEY, key);
+    } else {
+      sessionStorage.removeItem(API_KEY_SESSION_KEY);
+    }
+  } catch { /* ignore */ }
 }
 
 /* ─── Dark mode helpers ───────────────────────────────────────────── */
@@ -629,8 +634,15 @@ function ApiKeyModal({ current, onSave, onClose }: ApiKeyModalProps): React.Reac
       role="dialog"
       aria-modal="true"
       aria-label="API Key Settings"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
+      {/* Backdrop dismiss — proper button so it's keyboard accessible */}
+      <button
+        className="modal-backdrop__dismiss"
+        onClick={onClose}
+        aria-label="Close dialog"
+        tabIndex={-1}
+        type="button"
+      />
       <div className="modal">
         <div className="modal__header">
           <span className="modal__title">
@@ -764,9 +776,21 @@ const METRIC_COLORS: Record<string, string> = {
   Space:      "#06b6d4",
 };
 
+/* ─── Status badge config (module-level — no reason to rebuild each render) */
+const BADGE_CONFIG: Record<Phase, { label: string; cls: string }> = {
+  idle:      { label: "Ready",      cls: "badge-idle"      },
+  analyzing: { label: "Analyzing",  cls: "badge-analyzing" },
+  done:      { label: "Complete",   cls: "badge-done"      },
+  error:     { label: "Error",      cls: "badge-error"     },
+};
+
 /* ═══════════════════════════════════════════════════════════════════
    ROOT COMPONENT
    ═══════════════════════════════════════════════════════════════════ */
+
+// Parse the share URL once at startup — stable for the lifetime of the page.
+const INITIAL_SHARE = decodeShare();
+
 export default function App(): React.ReactElement {
 
   /* ── Dark mode ─────────────────────────────────────────────────── */
@@ -804,12 +828,18 @@ export default function App(): React.ReactElement {
       setShareToast(true);
       setTimeout(() => setShareToast(false), 2800);
     }).catch(() => {
-      const el = document.createElement("input");
-      el.value = url;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
+      // Fallback for browsers/contexts where clipboard API is unavailable
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.cssText = "position:fixed;top:-9999px;left:-9999px;opacity:0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.body.removeChild(ta);
+      } catch {
+        // nothing we can do
+      }
       setShareToast(true);
       setTimeout(() => setShareToast(false), 2800);
     });
@@ -819,16 +849,21 @@ export default function App(): React.ReactElement {
   const [catFilter, setCatFilter] = useState<CategoryFilter>("All");
 
   /* ── Core state ─────────────────────────────────────────────────── */
-  const [code, setCode] = useState<string>(() => decodeShare()?.code ?? DEMOS.bubble.code);
-  const [activeDemo, setActiveDemo] = useState<DemoKey | "">(() => decodeShare() ? "" : "bubble");
+  const [code, setCode] = useState<string>(() => INITIAL_SHARE?.code ?? DEMOS.bubble.code);
+  const [activeDemo, setActiveDemo] = useState<DemoKey | "">(() => INITIAL_SHARE ? "" : "bubble");
   const [model, setModel]           = useState<string>(DEFAULT_MODEL);
-  const [customInput, setCustomInput] = useState<string>(() => decodeShare()?.arr ?? "");
+  const [customInput, setCustomInput] = useState<string>(() => INITIAL_SHARE?.arr ?? "");
   const [phase, setPhase]           = useState<Phase>("idle");
   const [analysis, setAnalysis]     = useState<AlgorithmAnalysis | null>(null);
   const [error, setError]           = useState<string>("");
 
   const [pb, dispatch] = useReducer(playbackReducer, initialPlayback);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear any pending timer on unmount
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
 
   /* ── Load demo ──────────────────────────────────────────────────── */
   function loadDemo(key: DemoKey): void {
@@ -924,10 +959,10 @@ export default function App(): React.ReactElement {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [pb.playing, pb.stepIdx, pb.speed, tick]);
 
-  const handlePlay = (): void => dispatch({ type: "PLAY_TOGGLE", totalSteps: steps.length });
-  const goBack     = (): void => { if (timerRef.current) clearTimeout(timerRef.current); dispatch({ type: "STEP_PREV" }); };
-  const goForward  = (): void => { if (timerRef.current) clearTimeout(timerRef.current); dispatch({ type: "STEP_NEXT", totalSteps: steps.length }); };
-  const resetViz   = (): void => { if (timerRef.current) clearTimeout(timerRef.current); dispatch({ type: "RESET" }); };
+  const handlePlay = useCallback((): void => dispatch({ type: "PLAY_TOGGLE", totalSteps: steps.length }), [steps.length]);
+  const goBack     = useCallback((): void => { if (timerRef.current) clearTimeout(timerRef.current); dispatch({ type: "STEP_PREV" }); }, []);
+  const goForward  = useCallback((): void => { if (timerRef.current) clearTimeout(timerRef.current); dispatch({ type: "STEP_NEXT", totalSteps: steps.length }); }, [steps.length]);
+  const resetViz   = useCallback((): void => { if (timerRef.current) clearTimeout(timerRef.current); dispatch({ type: "RESET" }); }, []);
 
   function seekTo(e: React.MouseEvent<HTMLDivElement>): void {
     if (!steps.length) return;
@@ -950,17 +985,10 @@ export default function App(): React.ReactElement {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [steps.length, pb.stepIdx, pb.playing]);
+  }, [steps.length, handlePlay, goForward, goBack, resetViz]);
 
   /* ── Status badge ───────────────────────────────────────────────── */
-  const BADGE: Record<Phase, { label: string; cls: string }> = {
-    idle:      { label: "Ready",       cls: "badge-idle"      },
-    analyzing: { label: "Analyzing",   cls: "badge-analyzing" },
-    done:      { label: "Complete",    cls: "badge-done"      },
-    error:     { label: "Error",       cls: "badge-error"     },
-  };
-  const badge = BADGE[phase];
+  const badge = BADGE_CONFIG[phase];
 
   /* ── Filtered demos ─────────────────────────────────────────────── */
   const filteredDemos = (Object.entries(DEMOS) as Array<[DemoKey, DemoEntry]>).filter(
@@ -1060,7 +1088,7 @@ export default function App(): React.ReactElement {
         </header>
 
         {/* ═══ SHARED CODE BANNER ══════════════════════════════════ */}
-        {decodeShare() && (
+        {INITIAL_SHARE && (
           <div className="alert alert-share" role="status">
             <strong>
               <IconShare />
@@ -1099,12 +1127,11 @@ export default function App(): React.ReactElement {
           </div>
 
           {/* Demo strip */}
-          <div className="demo-strip" role="list" aria-label="Demo algorithms">
+          <div className="demo-strip" aria-label="Demo algorithms">
             <span className="demo-strip__label" aria-hidden="true">Demos:</span>
             {filteredDemos.map(([key, d]) => (
               <button
                 key={key}
-                role="listitem"
                 onClick={() => loadDemo(key)}
                 className={clsx("demo-chip", activeDemo === key && "demo-chip--on")}
                 style={activeDemo === key ? { borderColor: CATEGORY_COLORS[d.category] ?? "#6366f1" } : {}}
@@ -1128,7 +1155,6 @@ export default function App(): React.ReactElement {
             className="code-textarea"
             placeholder="// Paste any DSA algorithm here…"
             aria-label="DSA code input — paste your algorithm here"
-            aria-multiline="true"
           />
 
           {/* Action row */}
@@ -1231,7 +1257,7 @@ export default function App(): React.ReactElement {
                     <div className="card-head">
                       <span className="card-head__label">Corrected Code</span>
                     </div>
-                    <pre className="code-block" tabIndex={0}>{analysis.correctedCode}</pre>
+                    <pre className="code-block">{analysis.correctedCode}</pre>
                   </section>
                 )}
 
@@ -1372,29 +1398,26 @@ export default function App(): React.ReactElement {
                         <IconReset /> Reset
                       </button>
 
-                      {/* Progress bar */}
-                      <div
-                        className="progress"
-                        role="slider"
-                        aria-label="Step progress"
-                        aria-valuemin={1}
-                        aria-valuemax={steps.length}
-                        aria-valuenow={pb.stepIdx + 1}
-                        aria-valuetext={`Step ${pb.stepIdx + 1} of ${steps.length}`}
-                        tabIndex={0}
-                        onClick={seekTo}
-                        onKeyDown={(e) => {
-                          if (e.key === "ArrowRight") goForward();
-                          if (e.key === "ArrowLeft")  goBack();
-                        }}
-                        title="Click to seek"
-                      >
+                      {/* Seekable progress bar — native range for full a11y */}
+                      <div className="progress" aria-hidden="true" onClick={seekTo} title="Click to seek">
                         <div
                           className="progress__fill"
                           style={{ width: `${((pb.stepIdx + 1) / steps.length) * 100}%` }}
-                          aria-hidden="true"
                         />
                       </div>
+                      <input
+                        type="range"
+                        className="progress-seek-input sr-only"
+                        min={0}
+                        max={steps.length - 1}
+                        value={pb.stepIdx}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          if (timerRef.current) clearTimeout(timerRef.current);
+                          dispatch({ type: "SEEK", idx: Number(e.target.value) });
+                        }}
+                        aria-label="Seek through steps"
+                        aria-valuetext={`Step ${pb.stepIdx + 1} of ${steps.length}`}
+                      />
 
                       {/* Speed slider */}
                       <div className="speed">
@@ -1447,7 +1470,7 @@ export default function App(): React.ReactElement {
 
         {/* ═══ EMPTY STATE ═══════════════════════════════════════ */}
         {phase === "idle" && !analysis && (
-          <div className="empty" role="main" aria-label="Get started">
+          <div className="empty" aria-label="Get started">
             <div className="empty__icon-wrap" aria-hidden="true">
               <IconCode />
             </div>
@@ -1456,13 +1479,12 @@ export default function App(): React.ReactElement {
               Choose from {Object.keys(DEMOS).length}+ demos across 7 categories, or paste your own code.
               The AI detects bugs, explains every line, and animates each step so you can follow at your own pace.
             </p>
-            <div className="empty__chips" role="list" aria-label="Quick-start demos">
+            <div className="empty__chips" aria-label="Quick-start demos">
               {(["bubble", "binary", "two_ptr", "fib_dp", "bfs"] as DemoKey[]).map(k => (
                 <button
                   key={k}
                   className="demo-chip"
                   onClick={() => loadDemo(k)}
-                  role="listitem"
                   type="button"
                   aria-label={`Load ${DEMOS[k].label} demo`}
                 >
