@@ -1,17 +1,26 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import "./App.css";
 
-// ─── Groq config ──────────────────────────────────────────────────────────────
+/* ─── Groq config ─────────────────────────────────────────────────── */
 const GROQ_API_KEY = import.meta.env.VITE_groqApi;
 const GROQ_URL     = "https://api.groq.com/openai/v1/chat/completions";
-// Use a real, currently available Groq model
-const GROQ_MODEL   = "llama-3.3-70b-versatile";
 
-// ─── System prompt ────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are an expert DSA (Data Structures & Algorithms) tutor and visualizer.
-Your ONLY output must be a single valid JSON object — no markdown, no backticks, no commentary, nothing else outside the JSON.
+// All currently available Groq chat-completion models (June 2025).
+// Any valid Groq API key works with every model listed here.
+const GROQ_MODELS = [
+  { id: "llama-3.3-70b-versatile",   label: "Llama 3.3 · 70B  (recommended)" },
+  { id: "llama3-70b-8192",           label: "Llama 3 · 70B" },
+  { id: "llama3-8b-8192",            label: "Llama 3 · 8B  (faster)" },
+  { id: "mixtral-8x7b-32768",        label: "Mixtral · 8x7B" },
+  { id: "gemma2-9b-it",              label: "Gemma 2 · 9B" },
+];
+const DEFAULT_MODEL = GROQ_MODELS[0].id;
 
-Required JSON structure:
+/* ─── System prompt ───────────────────────────────────────────────── */
+const SYSTEM_PROMPT = `You are an expert DSA (Data Structures & Algorithms) tutor and step-by-step visualizer.
+Your ONLY output must be a single valid JSON object — no markdown fences, no backticks, no commentary, nothing outside the JSON.
+
+Required JSON shape:
 {
   "isValid": true,
   "language": "C++",
@@ -22,13 +31,10 @@ Required JSON structure:
   "correctedCode": "",
   "timeComplexity": "O(n²)",
   "spaceComplexity": "O(1)",
-  "explanation": "2-3 sentence plain-English explanation of what this algorithm does.",
-  "howItWorks": [
-    "Step 1: ...",
-    "Step 2: ..."
-  ],
+  "explanation": "2-3 sentence plain-English description of what the algorithm does.",
+  "howItWorks": ["Step 1: ...", "Step 2: ..."],
   "codeLines": [
-    { "line": "void bubbleSort(int arr[], int n) {", "explain": "Function definition — takes array and size n" }
+    { "line": "void bubbleSort(int arr[], int n) {", "explain": "Function taking the array and its size n" }
   ],
   "defaultInput": [5, 3, 8, 1, 2],
   "steps": [
@@ -46,30 +52,27 @@ Required JSON structure:
   ]
 }
 
-Rules:
-- defaultInput: choose a small array (5-8 elements) that clearly demonstrates the algorithm.
-- steps: simulate EVERY individual step on defaultInput from start to finish. Each step = one meaningful operation (comparison, swap, assignment, etc.).
-- Each step must include the FULL current state of arr (copy it, do not mutate across steps incorrectly).
-- pointers keys are STRING indices (e.g. "0", "1", "3").
-- activeLine is 0-based index into codeLines array.
-- msg: explain like teaching a curious 15-year-old. Be concrete — mention actual values from arr.
-- highlight: indices being actively examined/compared (blue).
-- secondary: indices used as reference but not primary focus (yellow).
-- swap: indices being swapped (purple). Include BOTH indices.
-- done: indices whose final sorted position is confirmed (green).
-- eliminated: indices outside current search range (grey).
-- If code is not DSA or not valid code: isValid=false, steps=[].
-- If bugs found: isCorrect=false, fill bugs array with descriptions, fill correctedCode with fixed version, simulate correctedCode on defaultInput.
-- Support all major DSA categories: Sorting (Bubble, Selection, Insertion, Merge, Quick), Searching (Linear, Binary), Two Pointers, Sliding Window, Recursion, Stack, Queue, Linked List traversal, Tree traversal (BFS/DFS), Dynamic Programming (show dp array), Graph algorithms.
-- For DP algorithms: use arr to represent the dp table/array at each step.
-- For tree/graph: represent visited/current nodes as indices if possible, or set arr to a serialized version.
-- Always produce at least 3 steps even for trivial code.`;
+STRICT RULES:
+- defaultInput: 5-8 elements that clearly demonstrate the algorithm. Integers only.
+- steps: simulate EVERY individual operation (comparison, swap, assignment) on defaultInput from start to finish.
+- Each step: arr must reflect the FULL array state at that moment (copy it correctly each time).
+- pointers keys MUST be STRING indices: "0", "1", "3" — not numbers.
+- activeLine: 0-based index into codeLines. Must match the line executing at that step.
+- msg: friendly, concrete — mention actual values. Like explaining to a curious 15-year-old.
+- highlight: indices being compared (blue). secondary: reference indices (yellow).
+- swap: BOTH indices being swapped (purple). done: finalized positions (green). eliminated: out-of-range (grey).
+- DSA categories supported: Sorting (Bubble/Selection/Insertion/Merge/Quick), Searching (Linear/Binary),
+  Two Pointers, Sliding Window, Recursion, Stack, Queue, Linked List traversal,
+  Tree traversal (BFS/DFS), Dynamic Programming (use arr for dp table), Graph algorithms.
+- For DP: arr represents the dp array — show it building up step by step.
+- Minimum 3 steps always.
+- If code is not valid DSA: isValid=false, steps=[].
+- If bugs found: isCorrect=false, bugs=["description..."], correctedCode="...", then simulate the CORRECTED code.`;
 
-// ─── Demo algorithms ──────────────────────────────────────────────────────────
+/* ─── Demo algorithms ─────────────────────────────────────────────── */
 const DEMOS = {
   bubble: {
-    label: "Bubble Sort",
-    lang: "C++",
+    label: "Bubble Sort", lang: "C++",
     code: `// C++ — Bubble Sort
 void bubbleSort(int arr[], int n) {
     for (int i = 0; i < n - 1; i++) {
@@ -81,11 +84,10 @@ void bubbleSort(int arr[], int n) {
             }
         }
     }
-}`
+}`,
   },
   binary: {
-    label: "Binary Search",
-    lang: "Python",
+    label: "Binary Search", lang: "Python",
     code: `# Python — Binary Search
 def binary_search(arr, target):
     left, right = 0, len(arr) - 1
@@ -97,11 +99,10 @@ def binary_search(arr, target):
             left = mid + 1
         else:
             right = mid - 1
-    return -1`
+    return -1`,
   },
   selection: {
-    label: "Selection Sort",
-    lang: "Java",
+    label: "Selection Sort", lang: "Java",
     code: `// Java — Selection Sort
 void selectionSort(int[] arr) {
     int n = arr.length;
@@ -114,11 +115,23 @@ void selectionSort(int[] arr) {
         arr[minIdx] = arr[i];
         arr[i] = temp;
     }
-}`
+}`,
+  },
+  insertion: {
+    label: "Insertion Sort", lang: "Python",
+    code: `# Python — Insertion Sort
+def insertion_sort(arr):
+    for i in range(1, len(arr)):
+        key = arr[i]
+        j = i - 1
+        while j >= 0 and arr[j] > key:
+            arr[j + 1] = arr[j]
+            j -= 1
+        arr[j + 1] = key
+    return arr`,
   },
   two_ptr: {
-    label: "Two Pointers",
-    lang: "JS",
+    label: "Two Pointers", lang: "JS",
     code: `// JavaScript — Two Sum (sorted array)
 function twoSum(arr, target) {
     let left = 0, right = arr.length - 1;
@@ -129,11 +142,10 @@ function twoSum(arr, target) {
         else right--;
     }
     return [-1, -1];
-}`
+}`,
   },
   remove_dup: {
-    label: "Remove Duplicates",
-    lang: "C++",
+    label: "Remove Duplicates", lang: "C++",
     code: `// C++ — Remove Duplicates from Sorted Array
 int removeDuplicates(vector<int>& nums) {
     int count = 1;
@@ -144,57 +156,40 @@ int removeDuplicates(vector<int>& nums) {
         }
     }
     return count;
-}`
+}`,
   },
-  insertion: {
-    label: "Insertion Sort",
-    lang: "Python",
-    code: `# Python — Insertion Sort
-def insertion_sort(arr):
-    for i in range(1, len(arr)):
-        key = arr[i]
-        j = i - 1
-        while j >= 0 and arr[j] > key:
-            arr[j + 1] = arr[j]
-            j -= 1
-        arr[j + 1] = key
-    return arr`
-  },
-  linear_search: {
-    label: "Linear Search",
-    lang: "C++",
+  linear: {
+    label: "Linear Search", lang: "C++",
     code: `// C++ — Linear Search
 int linearSearch(int arr[], int n, int target) {
     for (int i = 0; i < n; i++) {
         if (arr[i] == target) return i;
     }
     return -1;
-}`
+}`,
   },
-  fibonacci_dp: {
-    label: "Fibonacci DP",
-    lang: "Python",
-    code: `# Python — Fibonacci with Dynamic Programming
+  fib_dp: {
+    label: "Fibonacci DP", lang: "Python",
+    code: `# Python — Fibonacci (Dynamic Programming)
 def fibonacci(n):
     dp = [0] * (n + 1)
     dp[1] = 1
     for i in range(2, n + 1):
         dp[i] = dp[i - 1] + dp[i - 2]
-    return dp[n]`
-  }
+    return dp[n]`,
+  },
 };
 
-// ─── Colors for each cell state ───────────────────────────────────────────────
+/* ─── Cell color map ──────────────────────────────────────────────── */
 const COLORS = {
-  active:     { bg: "#dbeafe", border: "#3b82f6", text: "#1e40af" }, // blue
-  secondary:  { bg: "#fef3c7", border: "#f59e0b", text: "#92400e" }, // yellow
-  done:       { bg: "#dcfce7", border: "#22c55e", text: "#166534" }, // green  ✔ fixed
-  eliminated: { bg: "#f1f5f9", border: "#cbd5e1", text: "#94a3b8" }, // grey
-  swap:       { bg: "#ede9fe", border: "#8b5cf6", text: "#4c1d95" }, // purple
-  idle:       { bg: "#ffffff", border: "#e2e8f0", text: "#334155" }, // white
+  active:     { bg: "#dbeafe", border: "#3b82f6", text: "#1e40af" },
+  secondary:  { bg: "#fef3c7", border: "#f59e0b", text: "#92400e" },
+  done:       { bg: "#dcfce7", border: "#22c55e", text: "#166534" },
+  eliminated: { bg: "#f1f5f9", border: "#cbd5e1", text: "#94a3b8" },
+  swap:       { bg: "#ede9fe", border: "#8b5cf6", text: "#4c1d95" },
+  idle:       { bg: "#ffffff", border: "#e2e8f0", text: "#334155" },
 };
 
-// Cell state priority: swap > highlight > secondary > eliminated > done > idle
 function cellState(idx, step) {
   if (!step) return "idle";
   if (step.swap?.includes(idx))       return "swap";
@@ -205,9 +200,9 @@ function cellState(idx, step) {
   return "idle";
 }
 
-// ─── ArrayViz component ───────────────────────────────────────────────────────
+/* ─── ArrayViz ────────────────────────────────────────────────────── */
 function ArrayViz({ step }) {
-  if (!step?.arr || step.arr.length === 0) return null;
+  if (!step?.arr?.length) return null;
   return (
     <div className="array-viz">
       {step.arr.map((val, idx) => {
@@ -218,9 +213,9 @@ function ArrayViz({ step }) {
             <span
               className="array-cell__ptr"
               style={{ color: ptr ? "#3b82f6" : "transparent" }}
-              aria-hidden={!ptr}
+              aria-label={ptr ? `pointer ${ptr} at index ${idx}` : undefined}
             >
-              {ptr || "."}
+              {ptr || "·"}
             </span>
             <div
               className="array-cell"
@@ -237,7 +232,7 @@ function ArrayViz({ step }) {
   );
 }
 
-// ─── CodePanel component ──────────────────────────────────────────────────────
+/* ─── CodePanel ───────────────────────────────────────────────────── */
 function CodePanel({ lines, activeLine }) {
   const activeRef = useRef(null);
   useEffect(() => {
@@ -245,28 +240,27 @@ function CodePanel({ lines, activeLine }) {
   }, [activeLine]);
 
   return (
-    <div className="code-panel" role="region" aria-label="Algorithm code with active line highlight">
+    <div className="code-panel">
       <div className="code-panel__titlebar">
         {["#ff5f57", "#febc2e", "#28c840"].map(c => (
-          <div key={c} className="code-panel__dot" style={{ background: c }} aria-hidden="true" />
+          <span key={c} className="code-panel__dot" style={{ background: c }} />
         ))}
-        <span className="code-panel__filename">algorithm.code</span>
+        <span className="code-panel__filename">algorithm</span>
       </div>
       <div className="code-panel__lines">
-        {(lines || []).map((item, i) => {
-          const isActive = i === activeLine;
+        {(lines ?? []).map((item, i) => {
+          const active = i === activeLine;
           return (
             <div
               key={i}
-              ref={isActive ? activeRef : null}
-              className={`code-line${isActive ? " code-line--active" : ""}`}
-              aria-current={isActive ? "true" : undefined}
+              ref={active ? activeRef : null}
+              className={`code-line${active ? " code-line--active" : ""}`}
             >
               <span className="code-line__num">{i + 1}</span>
               <span className="code-line__code">{item.line}</span>
-              {isActive && item.explain && (
+              {active && item.explain && (
                 <span className="code-line__explain" title={item.explain}>
-                  {"← "}{item.explain}
+                  ← {item.explain}
                 </span>
               )}
             </div>
@@ -277,34 +271,35 @@ function CodePanel({ lines, activeLine }) {
   );
 }
 
-// ─── Animated loading dots ────────────────────────────────────────────────────
-function Dots({ label }) {
+/* ─── Animated dots ───────────────────────────────────────────────── */
+function Dots() {
   const [d, setD] = useState(".");
   useEffect(() => {
-    const t = setInterval(() => setD(p => (p.length >= 3 ? "." : p + ".")), 400);
+    const t = setInterval(() => setD(p => (p.length >= 3 ? "." : p + ".")), 420);
     return () => clearInterval(t);
   }, []);
-  return <span className="analyzing-dots">{label}{d}</span>;
+  return <span>Analyzing{d}</span>;
 }
 
-// ─── Speed constants ──────────────────────────────────────────────────────────
-const SPEEDS  = [1600, 900, 500, 220, 80];
+/* ─── Speed / label maps ──────────────────────────────────────────── */
+const SPEEDS  = [1500, 850, 480, 210, 75];
 const SLABELS = ["Slowest", "Slow", "Normal", "Fast", "Fastest"];
 
-// ─── Main app ─────────────────────────────────────────────────────────────────
-export default function DSAAnalyzer() {
-  const [code,       setCode]       = useState(DEMOS.bubble.code);
-  const [activeDemo, setActiveDemo] = useState("bubble");
+/* ═══════════════════════════════════════════════════════════════════ */
+export default function App() {
+  const [code,        setCode]        = useState(DEMOS.bubble.code);
+  const [activeDemo,  setActiveDemo]  = useState("bubble");
+  const [model,       setModel]       = useState(DEFAULT_MODEL);
   const [customInput, setCustomInput] = useState("");
-  const [phase,      setPhase]      = useState("idle"); // idle | analyzing | done | error
-  const [analysis,   setAnalysis]   = useState(null);
-  const [error,      setError]      = useState("");
-  const [stepIdx,    setStepIdx]    = useState(0);
-  const [playing,    setPlaying]    = useState(false);
-  const [speed,      setSpeed]      = useState(3);
+  const [phase,       setPhase]       = useState("idle");
+  const [analysis,    setAnalysis]    = useState(null);
+  const [error,       setError]       = useState("");
+  const [stepIdx,     setStepIdx]     = useState(0);
+  const [playing,     setPlaying]     = useState(false);
+  const [speed,       setSpeed]       = useState(3);
   const timerRef = useRef(null);
 
-  // ── load demo ──────────────────────────────────────────────────────────────
+  /* ── load demo ────────────────────────────────────────────────── */
   function loadDemo(key) {
     setCode(DEMOS[key].code);
     setActiveDemo(key);
@@ -316,11 +311,12 @@ export default function DSAAnalyzer() {
     clearTimeout(timerRef.current);
   }
 
-  // ── analyze ────────────────────────────────────────────────────────────────
+  /* ── analyze ──────────────────────────────────────────────────── */
   async function analyze() {
     if (!code.trim()) return;
-    if (!GROQ_API_KEY || GROQ_API_KEY === "your_groq_api_key_here") {
-      setError("No API key found. Add your Groq API key to the .env file as VITE_groqApi=your_key");
+
+    if (!GROQ_API_KEY || GROQ_API_KEY.trim() === "") {
+      setError("No API key. Add VITE_groqApi=your_key to the .env file, then restart the dev server.");
       setPhase("error");
       return;
     }
@@ -331,10 +327,9 @@ export default function DSAAnalyzer() {
     setPlaying(false);
     clearTimeout(timerRef.current);
 
-    // Build user message — append custom input hint if provided
     let userMsg = "Analyze this DSA code and return the JSON:\n\n" + code;
     if (customInput.trim()) {
-      userMsg += `\n\nUse this as defaultInput: ${customInput.trim()}`;
+      userMsg += `\n\nPlease use this exact array as defaultInput: [${customInput.trim()}]`;
     }
 
     try {
@@ -342,10 +337,10 @@ export default function DSAAnalyzer() {
         method: "POST",
         headers: {
           "Content-Type":  "application/json",
-          "Authorization": "Bearer " + GROQ_API_KEY,
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
         },
         body: JSON.stringify({
-          model:       GROQ_MODEL,
+          model,
           temperature: 0.1,
           max_tokens:  8000,
           messages: [
@@ -357,28 +352,33 @@ export default function DSAAnalyzer() {
 
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        throw new Error(d?.error?.message || `Groq API error ${res.status}`);
+        const msg = d?.error?.message ?? "";
+        if (res.status === 401) throw new Error("Invalid API key. Check your .env file.");
+        if (res.status === 429) throw new Error("Rate limit hit. Wait a moment and try again.");
+        if (res.status === 400 && msg.includes("model")) {
+          throw new Error(`Model "${model}" is not available on your Groq plan. Try a different model.`);
+        }
+        throw new Error(msg || `Groq API error ${res.status}`);
       }
 
-      const data = await res.json();
-      const raw  = data?.choices?.[0]?.message?.content ?? "";
+      const data  = await res.json();
+      const raw   = data?.choices?.[0]?.message?.content ?? "";
 
-      // Strip any accidental markdown fences or leading/trailing whitespace
+      // Strip markdown fences the model may accidentally add
       const clean = raw
         .replace(/^```(?:json)?\s*/i, "")
-        .replace(/```\s*$/, "")
+        .replace(/\s*```$/,           "")
         .trim();
 
       let parsed;
       try {
         parsed = JSON.parse(clean);
       } catch {
-        // Try to extract the first {...} block if the model added surrounding text
         const match = clean.match(/\{[\s\S]*\}/);
         if (match) {
           parsed = JSON.parse(match[0]);
         } else {
-          throw new Error("Could not parse the AI response as JSON. Try again.");
+          throw new Error("AI returned invalid JSON. Try again or switch to a larger model.");
         }
       }
 
@@ -386,21 +386,18 @@ export default function DSAAnalyzer() {
       setStepIdx(0);
       setPhase("done");
     } catch (e) {
-      setError(e.message || "Analysis failed. Check your code and try again.");
+      setError(e.message || "Analysis failed. Try again.");
       setPhase("error");
     }
   }
 
-  // ── playback ───────────────────────────────────────────────────────────────
+  /* ── playback helpers ─────────────────────────────────────────── */
   const steps = analysis?.steps ?? [];
-  const cur   = steps[stepIdx] ?? null;
+  const cur   = steps[stepIdx]  ?? null;
 
   const tick = useCallback(() => {
     setStepIdx(p => {
-      if (p >= steps.length - 1) {
-        setPlaying(false);
-        return p;
-      }
+      if (p >= steps.length - 1) { setPlaying(false); return p; }
       return p + 1;
     });
   }, [steps.length]);
@@ -411,261 +408,237 @@ export default function DSAAnalyzer() {
     return () => clearTimeout(timerRef.current);
   }, [playing, stepIdx, speed, tick]);
 
-  function handlePlay() {
-    if (stepIdx >= steps.length - 1) {
-      setStepIdx(0);
-      setPlaying(true);
-      return;
-    }
+  const handlePlay = () => {
+    if (stepIdx >= steps.length - 1) { setStepIdx(0); setPlaying(true); return; }
     setPlaying(p => !p);
-  }
+  };
+  const goBack    = () => { setPlaying(false); clearTimeout(timerRef.current); setStepIdx(p => Math.max(p - 1, 0)); };
+  const goForward = () => { setPlaying(false); clearTimeout(timerRef.current); setStepIdx(p => Math.min(p + 1, steps.length - 1)); };
+  const resetViz  = () => { setPlaying(false); clearTimeout(timerRef.current); setStepIdx(0); };
 
-  function stepForward() {
-    setPlaying(false);
-    clearTimeout(timerRef.current);
-    setStepIdx(p => Math.min(p + 1, steps.length - 1));
-  }
-
-  function stepBack() {
-    setPlaying(false);
-    clearTimeout(timerRef.current);
-    setStepIdx(p => Math.max(p - 1, 0));
-  }
-
-  function reset() {
-    setPlaying(false);
-    clearTimeout(timerRef.current);
-    setStepIdx(0);
-  }
-
-  // Clickable progress bar — jump to step
-  function handleProgressClick(e) {
+  function seekTo(e) {
     if (!steps.length) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const pct  = (e.clientX - rect.left) / rect.width;
-    const idx  = Math.round(pct * (steps.length - 1));
+    const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     setPlaying(false);
     clearTimeout(timerRef.current);
-    setStepIdx(Math.max(0, Math.min(idx, steps.length - 1)));
+    setStepIdx(Math.round(pct * (steps.length - 1)));
   }
 
-  // ── keyboard shortcuts ─────────────────────────────────────────────────────
+  /* ── keyboard shortcuts ───────────────────────────────────────── */
   useEffect(() => {
-    function onKey(e) {
-      // Only when visualization is shown and not focused in textarea/input
+    const onKey = e => {
       if (!steps.length) return;
       const tag = document.activeElement?.tagName;
-      if (tag === "TEXTAREA" || tag === "INPUT") return;
-      if (e.key === " " || e.code === "Space") {
-        e.preventDefault();
-        handlePlay();
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        stepForward();
-      } else if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        stepBack();
-      } else if (e.key === "r" || e.key === "R") {
-        reset();
-      }
-    }
+      if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") return;
+      if (e.code === "Space")       { e.preventDefault(); handlePlay(); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); goForward(); }
+      else if (e.key === "ArrowLeft")  { e.preventDefault(); goBack(); }
+      else if (e.key === "r" || e.key === "R") resetViz();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [steps.length, stepIdx, playing]);
 
-  // ── status badge props ─────────────────────────────────────────────────────
-  const STATUS = {
-    idle:      { label: "Idle",         cls: "status-badge--idle"      },
-    analyzing: { label: "Analyzing...", cls: "status-badge--analyzing" },
-    done:      { label: "Ready",        cls: "status-badge--done"      },
-    error:     { label: "Error",        cls: "status-badge--error"     },
+  /* ── status badge ─────────────────────────────────────────────── */
+  const BADGE = {
+    idle:      { label: "Idle",         cls: "badge-idle"      },
+    analyzing: { label: "Analyzing…",   cls: "badge-analyzing" },
+    done:      { label: "Ready",        cls: "badge-done"      },
+    error:     { label: "Error",        cls: "badge-error"     },
   };
-  const sb = STATUS[phase] ?? STATUS.idle;
+  const badge = BADGE[phase] ?? BADGE.idle;
 
-  // ─────────────────────────────────────────────────────────────────────────
+  /* ══════════════════════════════════════════════════════════════ */
   return (
-    <div className="app-wrapper">
-      <div className="app-inner">
+    <div className="app">
+      <div className="app__inner">
 
-        {/* ── Header ─────────────────────────────────────────────────────── */}
-        <header className="app-header">
-          <div>
-            <div className="app-header__eyebrow">DSA Lab</div>
-            <h1 className="app-header__title">
-              Algorithm Analyzer<br />
-              <span className="app-header__title--accent">&amp; Visualizer</span>
+        {/* ── HEADER ──────────────────────────────────────────── */}
+        <header className="header">
+          <div className="header__left">
+            <p className="header__eyebrow">DSA Lab</p>
+            <h1 className="header__title">
+              Algorithm Analyzer
+              <span className="header__title-accent"> &amp; Visualizer</span>
             </h1>
           </div>
-          <span className={`status-badge ${sb.cls}`} role="status" aria-live="polite">
-            {sb.label}
-          </span>
+          <span className={`badge ${badge.cls}`}>{badge.label}</span>
         </header>
 
-        {/* ── Code input card ─────────────────────────────────────────────── */}
+        {/* ── INPUT CARD ──────────────────────────────────────── */}
         <div className="card">
-          <div className="card__header">
-            <span className="card__label">Paste your code</span>
-            <span className="card__subtitle">C++, Python, Java, JavaScript supported</span>
+
+          {/* Card title row */}
+          <div className="card-head">
+            <span className="card-head__label">Your Code</span>
+            <span className="card-head__sub">C++ · Python · Java · JavaScript</span>
           </div>
 
-          {/* Demo buttons */}
-          <div className="demo-bar">
-            <span className="demo-bar__label">Try a demo:</span>
+          {/* Demo strip */}
+          <div className="demo-strip">
+            <span className="demo-strip__label">Demo:</span>
             {Object.entries(DEMOS).map(([key, d]) => (
               <button
                 key={key}
                 onClick={() => loadDemo(key)}
-                className={`demo-btn${activeDemo === key ? " demo-btn--active" : ""}`}
-                aria-pressed={activeDemo === key}
+                className={`demo-chip${activeDemo === key ? " demo-chip--on" : ""}`}
               >
                 {d.label}
-                <span className="demo-btn__lang">{d.lang}</span>
+                <span className="demo-chip__lang">{d.lang}</span>
               </button>
             ))}
           </div>
 
-          {/* Code textarea */}
+          {/* Textarea */}
           <textarea
             value={code}
             onChange={e => { setCode(e.target.value); setActiveDemo(""); }}
             spellCheck={false}
-            className="code-input"
-            placeholder="// Paste any DSA algorithm here..."
+            className="code-textarea"
+            placeholder="// Paste any DSA algorithm here…"
             aria-label="DSA code input"
           />
 
-          {/* Custom input + analyze */}
-          <div className="code-actions">
-            <div className="custom-input-wrapper">
-              <label className="custom-input__label" htmlFor="custom-input">
-                Custom input array
-              </label>
+          {/* Action row */}
+          <div className="action-row">
+            {/* Custom input */}
+            <div className="field">
+              <label className="field__label" htmlFor="cust-input">Custom array (optional)</label>
               <input
-                id="custom-input"
+                id="cust-input"
                 type="text"
                 value={customInput}
                 onChange={e => setCustomInput(e.target.value)}
-                placeholder="e.g. 5,3,8,1,2  (optional)"
-                className="custom-input__field"
-                aria-describedby="custom-input-hint"
+                placeholder="e.g.  5, 3, 8, 1, 2"
+                className="field__input"
               />
-              <span id="custom-input-hint" className="custom-input__hint">
-                Override the AI-chosen test array
-              </span>
+              <span className="field__hint">Overrides the AI-chosen test array</span>
             </div>
 
+            {/* Model selector */}
+            <div className="field">
+              <label className="field__label" htmlFor="model-sel">Model</label>
+              <select
+                id="model-sel"
+                value={model}
+                onChange={e => setModel(e.target.value)}
+                className="field__select"
+              >
+                {GROQ_MODELS.map(m => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
+                ))}
+              </select>
+              <span className="field__hint">All models work with any Groq key</span>
+            </div>
+
+            {/* Analyze button */}
             <button
               onClick={analyze}
               disabled={phase === "analyzing" || !code.trim()}
-              className="btn btn--primary"
-              aria-busy={phase === "analyzing"}
+              className="btn btn-primary"
             >
-              {phase === "analyzing"
-                ? <Dots label="Analyzing" />
-                : "Analyze + Visualize"}
+              {phase === "analyzing" ? <Dots /> : "Analyze + Visualize"}
             </button>
-
-            {error && (
-              <p className="error-text" role="alert">
-                ⚠ {error}
-              </p>
-            )}
           </div>
+
+          {/* Error banner */}
+          {error && (
+            <div className="error-bar" role="alert">
+              <span className="error-bar__icon">⚠</span>
+              <span>{error}</span>
+            </div>
+          )}
         </div>
 
-        {/* ── Results ─────────────────────────────────────────────────────── */}
+        {/* ── RESULTS ─────────────────────────────────────────── */}
         {analysis && (
           <>
+            {/* Invalid code */}
             {analysis.isValid === false ? (
-              <div className="alert alert--warning" role="alert">
-                <div className="alert__title">Invalid or non-DSA code</div>
-                <div className="alert__body">
-                  {analysis.explanation || "Please paste a valid DSA algorithm (sorting, searching, DP, etc.)."}
-                </div>
+              <div className="alert alert-warn">
+                <strong>Invalid / non-DSA code</strong>
+                <p>{analysis.explanation || "Please paste a valid DSA algorithm."}</p>
               </div>
             ) : (
               <>
-                {/* Metric cards */}
-                <div className="metrics-grid">
+                {/* Metrics */}
+                <div className="metrics">
                   {[
-                    ["Algorithm",  analysis.algorithmName, "#0f172a"],
-                    ["Category",   analysis.category,      "#3b82f6"],
-                    ["Time",       analysis.timeComplexity,"#8b5cf6"],
-                    ["Space",      analysis.spaceComplexity,"#06b6d4"],
-                  ].map(([label, value, color]) => (
-                    <div key={label} className="metric-card">
-                      <div className="metric-card__label">{label}</div>
-                      <div className="metric-card__value" style={{ color }}>{value}</div>
+                    ["Algorithm",  analysis.algorithmName,  "var(--c-ink)"],
+                    ["Category",   analysis.category,       "var(--c-blue)"],
+                    ["Time",       analysis.timeComplexity, "var(--c-purple)"],
+                    ["Space",      analysis.spaceComplexity,"var(--c-cyan)"],
+                  ].map(([lbl, val, clr]) => (
+                    <div key={lbl} className="metric-tile">
+                      <span className="metric-tile__label">{lbl}</span>
+                      <span className="metric-tile__value" style={{ color: clr }}>{val}</span>
                     </div>
                   ))}
                 </div>
 
-                {/* Correctness banner */}
-                <div className={`alert ${analysis.isCorrect ? "alert--success" : "alert--warning"}`} role="alert">
-                  <div className="alert__title">
-                    {analysis.isCorrect ? "✓ Code is correct!" : "⚠ Issues found in your code"}
-                  </div>
-                  <div className="alert__body">
+                {/* Correctness */}
+                <div className={`alert ${analysis.isCorrect ? "alert-ok" : "alert-warn"}`}>
+                  <strong>{analysis.isCorrect ? "✓ Code looks correct" : "⚠ Issues found"}</strong>
+                  <p>
                     {analysis.isCorrect
                       ? analysis.explanation
                       : (analysis.bugs ?? []).join(" • ")}
-                  </div>
+                  </p>
                 </div>
 
                 {/* Corrected code */}
                 {!analysis.isCorrect && analysis.correctedCode && (
                   <div className="card">
-                    <div className="card__header">
-                      <span className="card__label">Corrected Code</span>
-                    </div>
-                    <pre className="corrected-code">{analysis.correctedCode}</pre>
+                    <div className="card-head"><span className="card-head__label">Corrected Code</span></div>
+                    <pre className="code-block">{analysis.correctedCode}</pre>
                   </div>
                 )}
 
                 {/* How it works */}
                 {analysis.howItWorks?.length > 0 && (
                   <div className="card">
-                    <div className="card__header">
-                      <span className="card__label">How it works</span>
-                    </div>
-                    <ol className="how-it-works" aria-label="Algorithm steps">
+                    <div className="card-head"><span className="card-head__label">How it works</span></div>
+                    <ol className="steps-list">
                       {analysis.howItWorks.map((s, i) => (
-                        <li key={i} className="how-step">
-                          <div className="how-step__num" aria-hidden="true">{i + 1}</div>
-                          <span className="how-step__text">{s}</span>
+                        <li key={i} className="steps-list__item">
+                          <span className="steps-list__num">{i + 1}</span>
+                          <span className="steps-list__text">{s}</span>
                         </li>
                       ))}
                     </ol>
                   </div>
                 )}
 
-                {/* ── Live Visualization ─────────────────────────────────── */}
+                {/* ── VISUALIZATION ───────────────────────────── */}
                 {steps.length > 0 && (
                   <div className="card viz-card">
-                    {/* Viz header */}
-                    <div className="viz-header">
-                      <span className="viz-header__title">Live Visualization</span>
-                      <span className="viz-header__count">
+                    {/* Viz header bar */}
+                    <div className="viz-topbar">
+                      <span className="viz-topbar__title">Live Visualization</span>
+                      <span className="viz-topbar__counter">
                         Step {stepIdx + 1} / {steps.length}
                       </span>
                     </div>
 
                     {/* Keyboard hint */}
-                    <div className="kbd-hint" aria-live="polite">
+                    <div className="kbd-row">
                       <kbd>Space</kbd> play/pause &nbsp;·&nbsp;
                       <kbd>←</kbd><kbd>→</kbd> step &nbsp;·&nbsp;
                       <kbd>R</kbd> reset
                     </div>
 
-                    <div className="viz-body">
-                      {/* Left: array + pointers + message */}
-                      <div className="viz-left">
-                        <div className="viz-section-label">Array state</div>
+                    {/* Two-column body */}
+                    <div className="viz-grid">
+
+                      {/* LEFT — array state */}
+                      <div className="viz-col viz-col--left">
+                        <p className="section-label">Array state</p>
                         <ArrayViz step={cur} />
 
                         {/* Legend */}
-                        <div className="legend" aria-label="Color legend">
+                        <div className="legend">
                           {[
                             ["active",    "#dbeafe", "#3b82f6"],
                             ["comparing", "#fef3c7", "#f59e0b"],
@@ -673,24 +646,20 @@ export default function DSAAnalyzer() {
                             ["swapping",  "#ede9fe", "#8b5cf6"],
                             ["skipped",   "#f1f5f9", "#cbd5e1"],
                           ].map(([l, bg, bd]) => (
-                            <div key={l} className="legend-item">
-                              <div
-                                className="legend-dot"
-                                style={{ background: bg, borderColor: bd }}
-                                aria-hidden="true"
-                              />
-                              <span className="legend-label">{l}</span>
+                            <div key={l} className="legend__item">
+                              <span className="legend__dot" style={{ background: bg, borderColor: bd }} />
+                              <span className="legend__label">{l}</span>
                             </div>
                           ))}
                         </div>
 
                         {/* Pointer cards */}
                         {cur?.pointers && Object.keys(cur.pointers).length > 0 && (
-                          <div className="pointers-grid" aria-label="Variable pointers">
+                          <div className="ptr-grid">
                             {Object.entries(cur.pointers).map(([idx, name]) => (
-                              <div key={name} className="pointer-card">
-                                <div className="pointer-card__name">{name}</div>
-                                <div className="pointer-card__value">idx = {idx}</div>
+                              <div key={name} className="ptr-card">
+                                <span className="ptr-card__name">{name}</span>
+                                <span className="ptr-card__val">idx = {idx}</span>
                               </div>
                             ))}
                           </div>
@@ -698,14 +667,14 @@ export default function DSAAnalyzer() {
 
                         {/* Step message */}
                         <div className="step-msg" aria-live="polite">
-                          <div className="step-msg__title">What is happening</div>
-                          <p className="step-msg__text">{cur?.msg || "—"}</p>
+                          <p className="step-msg__head">What is happening</p>
+                          <p className="step-msg__body">{cur?.msg || "—"}</p>
                         </div>
                       </div>
 
-                      {/* Right: code panel */}
-                      <div className="viz-right">
-                        <div className="viz-section-label">Code (active line highlighted)</div>
+                      {/* RIGHT — code panel */}
+                      <div className="viz-col viz-col--right">
+                        <p className="section-label">Code — active line highlighted</p>
                         <CodePanel
                           lines={analysis.codeLines}
                           activeLine={cur?.activeLine ?? -1}
@@ -717,112 +686,67 @@ export default function DSAAnalyzer() {
                     <div className="playback">
                       <button
                         onClick={handlePlay}
-                        className={`btn ${playing ? "btn--pause" : "btn--play"}`}
-                        aria-label={playing ? "Pause visualization" : "Play visualization"}
+                        className={`btn ${playing ? "btn-pause" : "btn-play"}`}
+                        title={playing ? "Pause (Space)" : "Play (Space)"}
                       >
                         {playing ? "⏸ Pause" : "▶ Play"}
                       </button>
 
-                      <button
-                        onClick={stepBack}
-                        disabled={stepIdx === 0}
-                        className="btn"
-                        aria-label="Previous step"
-                        title="Step back (←)"
-                      >
-                        ‹ Back
-                      </button>
+                      <button onClick={goBack}    disabled={stepIdx === 0}                 className="btn btn-ctrl" title="Step back (←)">‹ Back</button>
+                      <button onClick={goForward} disabled={stepIdx >= steps.length - 1}   className="btn btn-ctrl" title="Step forward (→)">Next ›</button>
+                      <button onClick={resetViz}                                            className="btn btn-ctrl" title="Reset (R)">↺ Reset</button>
 
-                      <button
-                        onClick={stepForward}
-                        disabled={stepIdx >= steps.length - 1}
-                        className="btn"
-                        aria-label="Next step"
-                        title="Step forward (→)"
-                      >
-                        Next ›
-                      </button>
-
-                      <button
-                        onClick={reset}
-                        className="btn"
-                        aria-label="Reset to first step"
-                        title="Reset (R)"
-                      >
-                        ↺ Reset
-                      </button>
-
-                      {/* Clickable progress bar */}
+                      {/* Seekable progress bar */}
                       <div
-                        className="progress-bar"
+                        className="progress"
                         role="slider"
+                        aria-label="Step progress"
                         aria-valuemin={1}
                         aria-valuemax={steps.length}
                         aria-valuenow={stepIdx + 1}
-                        aria-label="Step progress"
                         tabIndex={0}
-                        onClick={handleProgressClick}
-                        onKeyDown={e => {
-                          if (e.key === "ArrowRight") stepForward();
-                          if (e.key === "ArrowLeft")  stepBack();
-                        }}
-                        style={{ cursor: "pointer" }}
-                        title="Click to jump to a step"
+                        onClick={seekTo}
+                        onKeyDown={e => { if (e.key === "ArrowRight") goForward(); if (e.key === "ArrowLeft") goBack(); }}
+                        title="Click to seek"
                       >
                         <div
-                          className="progress-bar__fill"
-                          style={{ width: `${steps.length ? ((stepIdx + 1) / steps.length) * 100 : 0}%` }}
+                          className="progress__fill"
+                          style={{ width: `${((stepIdx + 1) / steps.length) * 100}%` }}
                         />
                       </div>
 
-                      {/* Speed control */}
-                      <div className="speed-control">
-                        <label className="speed-control__label" htmlFor="speed-range">
-                          Speed
-                        </label>
+                      {/* Speed slider */}
+                      <div className="speed">
+                        <label className="speed__label" htmlFor="speed-range">Speed</label>
                         <input
                           id="speed-range"
                           type="range"
-                          min="1"
-                          max="5"
-                          step="1"
+                          min="1" max="5" step="1"
                           value={speed}
                           onChange={e => setSpeed(Number(e.target.value))}
                           aria-valuetext={SLABELS[speed - 1]}
                         />
-                        <span className="speed-control__value">{SLABELS[speed - 1]}</span>
+                        <span className="speed__val">{SLABELS[speed - 1]}</span>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* ── Line-by-line explanation ───────────────────────────── */}
+                {/* ── LINE-BY-LINE ─────────────────────────────── */}
                 {analysis.codeLines?.length > 0 && (
                   <div className="card">
-                    <div className="card__header">
-                      <span className="card__label">Line-by-line explanation</span>
-                    </div>
-                    <div role="list" aria-label="Code line explanations">
-                      {analysis.codeLines.map((item, i) => (
-                        <div
-                          key={i}
-                          role="listitem"
-                          className="explain-row"
-                          style={{
-                            borderBottom:
-                              i < analysis.codeLines.length - 1
-                                ? "1px solid #f8fafc"
-                                : "none",
-                          }}
-                        >
-                          <span className="explain-row__num" aria-hidden="true">
-                            {i + 1}
-                          </span>
-                          <code className="explain-row__code">{item.line}</code>
-                          <span className="explain-row__text">{item.explain}</span>
-                        </div>
-                      ))}
-                    </div>
+                    <div className="card-head"><span className="card-head__label">Line-by-line explanation</span></div>
+                    {analysis.codeLines.map((item, i) => (
+                      <div
+                        key={i}
+                        className="explain-row"
+                        style={{ borderBottom: i < analysis.codeLines.length - 1 ? "1px solid #f1f5f9" : "none" }}
+                      >
+                        <span className="explain-row__num">{i + 1}</span>
+                        <code className="explain-row__code">{item.line}</code>
+                        <span className="explain-row__text">{item.explain}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </>
@@ -830,29 +754,23 @@ export default function DSAAnalyzer() {
           </>
         )}
 
-        {/* ── Empty state ─────────────────────────────────────────────────── */}
+        {/* ── EMPTY STATE ─────────────────────────────────────── */}
         {phase === "idle" && !analysis && (
-          <div className="empty-state" aria-label="Get started">
-            <div className="empty-state__icon" aria-hidden="true">{"</>"}</div>
-            <div className="empty-state__title">Paste any DSA algorithm above</div>
-            <div className="empty-state__body">
-              Choose a demo or paste your own code. The AI will detect bugs, explain every line,
-              and animate each step so you can follow along at your own pace.
-            </div>
+          <div className="empty">
+            <div className="empty__icon">{"</>"}</div>
+            <p className="empty__title">Paste any DSA algorithm above</p>
+            <p className="empty__body">
+              Pick a demo or paste your own code. The AI will detect bugs, explain
+              every line, and animate each step so you can follow along at your own pace.
+            </p>
           </div>
         )}
 
-        {/* ── Footer ──────────────────────────────────────────────────────── */}
-        <footer className="app-footer">
+        {/* ── FOOTER ──────────────────────────────────────────── */}
+        <footer className="footer">
           Powered by{" "}
-          <a
-            href="https://groq.com"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Groq
-          </a>{" "}
-          · Model: {GROQ_MODEL}
+          <a href="https://groq.com" target="_blank" rel="noopener noreferrer">Groq</a>
+          {" "}· Model: <code>{model}</code>
         </footer>
 
       </div>

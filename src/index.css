@@ -1,8 +1,7 @@
-/* =====================================================
-   DSA Algorithm Visualizer — Global Styles
-   ===================================================== */
+/* =====================================================================
+   DSA Algorithm Visualizer — Global Reset & Base Styles
+   ===================================================================== */
 
-/* CSS Reset & Base */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -17,7 +16,7 @@ html {
 
 body {
   font-family: 'IBM Plex Mono', 'Courier New', Courier, monospace;
-  background-color: #f8fafc;
+  background: #f8fafc;
   color: #0f172a;
   line-height: 1.6;
   min-height: 100vh;
@@ -27,59 +26,32 @@ body {
 
 #root {
   min-height: 100vh;
-  width: 100%;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
+/* ── Scrollbar ─────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-/* Typography utilities */
-code, pre, textarea, .mono {
-  font-family: 'IBM Plex Mono', 'Courier New', Courier, monospace;
-}
-
-/* Button base reset */
+/* ── Base elements ─────────────────────────────────────────────────── */
 button {
   cursor: pointer;
   font-family: inherit;
-  border: none;
-  outline: none;
-  background: none;
 }
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
 }
 
-/* Input / Textarea reset */
 input, textarea {
   font-family: inherit;
-  outline: none;
 }
 
 textarea {
   resize: vertical;
 }
 
-/* Link reset */
 a {
   color: #3b82f6;
   text-decoration: none;
@@ -89,32 +61,18 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Utility: visually-hidden (accessibility) */
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+code, pre {
+  font-family: 'IBM Plex Mono', 'Courier New', Courier, monospace;
 }
 
-/* Focus styles for accessibility */
+/* ── Focus visible (accessibility) ────────────────────────────────── */
 :focus-visible {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* Smooth transitions for interactive elements */
-button, input[type="range"] {
-  transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-}
-
-/* Range input styling */
+/* ── Range input ───────────────────────────────────────────────────── */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
@@ -122,6 +80,7 @@ input[type="range"] {
   border-radius: 2px;
   background: #e2e8f0;
   cursor: pointer;
+  width: 70px;
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -132,7 +91,6 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 50%;
   background: #3b82f6;
   cursor: pointer;
-  transition: background 0.15s;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
@@ -144,39 +102,25 @@ input[type="range"]::-moz-range-thumb {
   height: 14px;
   border-radius: 50%;
   background: #3b82f6;
-  cursor: pointer;
   border: none;
+  cursor: pointer;
 }
 
-/* Selection color */
+/* ── Selection ─────────────────────────────────────────────────────── */
 ::selection {
-  background-color: #bfdbfe;
+  background: #bfdbfe;
   color: #1e40af;
 }
 
-/* Animation keyframes used across the app */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.5; }
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-.fade-in {
-  animation: fadeIn 0.25s ease forwards;
-}
-
-/* Responsive max-width container */
-.container {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 16px;
+/* ── Accessibility ─────────────────────────────────────────────────── */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
