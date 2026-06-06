@@ -1,28 +1,31 @@
 /**
- * src/index.css — Tailwind CSS v4 entry point
+ * src/index.css — AlgoViz Pro · Tailwind CSS v4 entry point
  *
- * All design tokens are defined here via @theme.
- * Component classes are in @layer components.
- * Dark-mode support via the "class" strategy (add class="dark" to <html>).
+ * Design tokens match the PRD color palette (Section 7.2).
+ * Component utility classes in @layer components.
+ * Dark-mode via the "class" strategy (add class="dark" to <html>).
  */
 
 @import "tailwindcss";
 
-/* ── Design Tokens (Tailwind v4 @theme) ─────────────────────────── */
+/* ── Design Tokens ───────────────────────────────────────────────── */
 @theme {
-  /* Brand color palette */
+  /* Brand palette — PRD §7.2 */
   --color-brand-50:   #eff6ff;
   --color-brand-100:  #dbeafe;
   --color-brand-200:  #bfdbfe;
   --color-brand-300:  #93c5fd;
   --color-brand-400:  #60a5fa;
-  --color-brand-500:  #3b82f6;   /* primary blue */
-  --color-brand-600:  #2563eb;
+  --color-brand-500:  #3b82f6;
+  --color-brand-600:  #2563eb;   /* primary CTA */
   --color-brand-700:  #1d4ed8;
   --color-brand-800:  #1e40af;
-  --color-brand-900:  #1e3a8a;
+  --color-brand-900:  #1e3a8a;   /* dark hover */
 
-  /* Code background — dark slate */
+  /* Accent */
+  --color-sky-500:    #0ea5e9;
+
+  /* Code panels */
   --color-code-bg:     #0d1117;
   --color-code-bg-2:   #161b22;
   --color-code-border: #30363d;
@@ -38,30 +41,37 @@
   --color-subtle:   #64748b;
   --color-border:   #e2e8f0;
 
+  /* Status / semantic */
+  --color-success:  #15803d;
+  --color-error:    #b91c1c;
+  --color-warning:  #b45309;
+
   /* Algorithm cell states */
-  --color-cell-active-bg:     #dbeafe;
-  --color-cell-active-border: #3b82f6;
-  --color-cell-active-text:   #1e40af;
-  --color-cell-swap-bg:       #ede9fe;
-  --color-cell-swap-border:   #8b5cf6;
-  --color-cell-swap-text:     #4c1d95;
-  --color-cell-done-bg:       #dcfce7;
-  --color-cell-done-border:   #22c55e;
-  --color-cell-done-text:     #166534;
-  --color-cell-elim-bg:       #f1f5f9;
-  --color-cell-elim-border:   #cbd5e1;
-  --color-cell-elim-text:     #94a3b8;
-  --color-cell-secondary-bg:  #fef3c7;
-  --color-cell-secondary-border: #f59e0b;
-  --color-cell-secondary-text: #92400e;
+  --color-cell-active-bg:          #dbeafe;
+  --color-cell-active-border:      #3b82f6;
+  --color-cell-active-text:        #1e40af;
+  --color-cell-swap-bg:            #ede9fe;
+  --color-cell-swap-border:        #8b5cf6;
+  --color-cell-swap-text:          #4c1d95;
+  --color-cell-done-bg:            #dcfce7;
+  --color-cell-done-border:        #22c55e;
+  --color-cell-done-text:          #166534;
+  --color-cell-elim-bg:            #f1f5f9;
+  --color-cell-elim-border:        #cbd5e1;
+  --color-cell-elim-text:          #94a3b8;
+  --color-cell-secondary-bg:       #fef3c7;
+  --color-cell-secondary-border:   #f59e0b;
+  --color-cell-secondary-text:     #92400e;
 
-  /* Monospace font stack for code panels */
-  --font-mono: "IBM Plex Mono", "Courier New", Courier, monospace;
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', 'Courier New', Courier, monospace;
 
-  /* Custom step-transition animation */
+  /* Animation */
   --animate-step-in: step-in 0.22s ease both;
+  --animate-fade-up: fadeUp 0.2s ease both;
 
-  /* Border radius tokens */
+  /* Radius */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 14px;
@@ -75,10 +85,10 @@
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0);   }
 }
 
-/* ── Base reset & global styles ──────────────────────────────────── */
+/* ── Base reset & globals ────────────────────────────────────────── */
 @layer base {
   *, *::before, *::after {
     box-sizing: border-box;
@@ -93,7 +103,7 @@
   }
 
   body {
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     background: var(--color-bg);
     color: var(--color-ink);
     line-height: 1.6;
@@ -102,26 +112,29 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  #root { min-height: 100vh; }
-
   /* Dark mode body */
-  .dark body {
+  html.dark body {
     background: var(--color-code-bg);
     color: var(--color-code-active);
   }
 
-  /* Focus visible */
+  #root { min-height: 100vh; }
+
   :focus-visible {
     outline: 2px solid var(--color-brand-500);
     outline-offset: 2px;
     border-radius: 4px;
   }
 
-  /* Scrollbar */
+  /* Scrollbars */
   ::-webkit-scrollbar       { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
   ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  html.dark ::-webkit-scrollbar-track { background: #0d1117; }
+  html.dark ::-webkit-scrollbar-thumb { background: #334155; }
+  html.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
   /* Range input */
   input[type="range"] {
@@ -140,19 +153,19 @@
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: var(--color-brand-500);
+    background: var(--color-brand-600);
     cursor: pointer;
   }
 
   input[type="range"]::-webkit-slider-thumb:hover {
-    background: var(--color-brand-600);
+    background: var(--color-brand-700);
   }
 
   input[type="range"]::-moz-range-thumb {
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: var(--color-brand-500);
+    background: var(--color-brand-600);
     border: none;
     cursor: pointer;
   }
@@ -176,7 +189,7 @@
 
 /* ── Reusable component classes ──────────────────────────────────── */
 @layer components {
-  /* Primary action button */
+  /* Primary CTA button — PRD brand-600 */
   .btn-primary {
     display: inline-flex;
     align-items: center;
@@ -185,18 +198,18 @@
     padding: 10px 26px;
     border-radius: var(--radius-sm);
     border: none;
-    background: var(--color-ink);
+    background: var(--color-brand-600);
     color: #fff;
     font-size: 14px;
     font-weight: 700;
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.13s, opacity 0.13s;
   }
 
   .btn-primary:hover:not(:disabled) {
-    background: #1e293b;
+    background: var(--color-brand-900);
   }
 
   .btn-primary:disabled {
@@ -205,7 +218,30 @@
     cursor: not-allowed;
   }
 
-  /* Code panel — dark terminal-style box */
+  /* Ghost outlined button */
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--color-subtle);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: background 0.13s, color 0.13s;
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--color-bg);
+    color: var(--color-ink);
+  }
+
+  /* Code panel */
   .code-panel {
     background: var(--color-code-bg);
     border-radius: 10px;
@@ -214,7 +250,7 @@
     font-family: var(--font-mono);
   }
 
-  /* Badge variants */
+  /* Badge */
   .badge {
     font-size: 11px;
     font-weight: 600;
@@ -224,37 +260,29 @@
     align-self: flex-start;
   }
 
-  .badge-idle      { background: #f1f5f9; color: #475569; }
-  .badge-analyzing { background: var(--color-brand-100); color: var(--color-brand-800); }
-  .badge-done      { background: #dcfce7; color: #166534; }
-  .badge-error     { background: #fee2e2; color: #991b1b; }
-
-  /* Step message box */
-  .step-msg {
-    margin-top: 12px;
-    background: #f0f9ff;
-    border: 1px solid #bae6fd;
-    border-radius: 9px;
-    padding: 10px 12px;
-  }
-
-  .step-msg__head {
-    font-size: 10px;
-    font-weight: 700;
-    color: #0369a1;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin: 0 0 4px;
-  }
-
-  .step-msg__body {
+  /* Complexity chip — monospace, color-coded */
+  .complexity-chip {
+    display: inline-block;
+    font-family: var(--font-mono);
     font-size: 12px;
-    color: #0c4a6e;
-    line-height: 1.65;
-    margin: 0;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
   }
 
-  /* Accessibility utility */
+  .complexity-chip--good    { background: #dcfce7; color: #15803d; }
+  .complexity-chip--moderate{ background: #fef3c7; color: #b45309; }
+  .complexity-chip--poor    { background: #fee2e2; color: #b91c1c; }
+
+  /* Step card */
+  .step-card {
+    border: 1px solid var(--color-border);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border-radius: var(--radius-md);
+    transition: all 0.22s ease;
+  }
+
+  /* Visually hidden (a11y) */
   .visually-hidden {
     position: absolute;
     width: 1px;

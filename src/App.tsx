@@ -1,15 +1,15 @@
 /**
- * App.tsx — DSA Algorithm Analyzer & Visualizer
+ * App.tsx — AlgoViz Pro
  *
- * Fully typed with:
- *  - Typed interfaces for all props
- *  - Explicit generics on useState / useRef
- *  - Typed event handlers (React.MouseEvent, React.ChangeEvent)
- *  - useReducer with discriminated-union Action type for the playback state
- *  - No implicit any
- *
- * Styles: Tailwind CSS utility classes (inline styles removed except where
- * dynamic CSS custom properties are required for per-cell colors).
+ * Features:
+ *  - AlgoViz Pro branding & navigation
+ *  - Dark mode (system-preference-aware + manual toggle)
+ *  - BYOK: in-app Groq API key management (sessionStorage)
+ *  - Shareable links (URL encodes code + array + language)
+ *  - 15+ demo algorithms across 7 categories
+ *  - Step-by-step visualizer with playback controls
+ *  - Big-O analysis, line-by-line explanations, bug detection
+ *  - Fully typed with strict TypeScript; no implicit any
  */
 
 import {
@@ -25,7 +25,6 @@ import type { AlgorithmAnalysis, VisualizationStep, CodeLine } from "./lib/api";
 import "./App.css";
 
 /* ─── Groq config ─────────────────────────────────────────────────── */
-const GROQ_API_KEY: string = import.meta.env.VITE_groqApi as string ?? "";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 interface GroqModel {
@@ -41,6 +40,56 @@ const GROQ_MODELS: GroqModel[] = [
   { id: "gemma2-9b-it",              label: "Gemma 2 · 9B" },
 ];
 const DEFAULT_MODEL = GROQ_MODELS[0].id;
+
+/* ─── API key helpers (sessionStorage) ───────────────────────────── */
+const API_KEY_SESSION_KEY = "algviz_groq_key";
+
+function getStoredKey(): string {
+  try { return sessionStorage.getItem(API_KEY_SESSION_KEY) ?? import.meta.env.VITE_groqApi ?? ""; }
+  catch { return import.meta.env.VITE_groqApi ?? ""; }
+}
+
+function saveKey(key: string): void {
+  try { key ? sessionStorage.setItem(API_KEY_SESSION_KEY, key) : sessionStorage.removeItem(API_KEY_SESSION_KEY); }
+  catch { /* ignore */ }
+}
+
+/* ─── Dark mode helpers ───────────────────────────────────────────── */
+function getSystemDark(): boolean {
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+}
+
+function applyDark(dark: boolean): void {
+  document.documentElement.classList.toggle("dark", dark);
+}
+
+/* ─── Share link helpers ──────────────────────────────────────────── */
+interface ShareParams {
+  code: string;
+  lang?: string;
+  arr?: string;
+}
+
+function encodeShare({ code, lang, arr }: ShareParams): string {
+  const params = new URLSearchParams();
+  params.set("c", btoa(encodeURIComponent(code)));
+  if (lang) params.set("l", lang);
+  if (arr)  params.set("a", arr);
+  return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+}
+
+function decodeShare(): ShareParams | null {
+  const p = new URLSearchParams(window.location.search);
+  const c = p.get("c");
+  if (!c) return null;
+  try {
+    return {
+      code: decodeURIComponent(atob(c)),
+      lang: p.get("l") ?? undefined,
+      arr:  p.get("a") ?? undefined,
+    };
+  } catch { return null; }
+}
 
 /* ─── System prompt ───────────────────────────────────────────────── */
 const SYSTEM_PROMPT = `You are an expert DSA (Data Structures & Algorithms) tutor and step-by-step visualizer.
@@ -95,18 +144,26 @@ STRICT RULES:
 - If code is not valid DSA: isValid=false, steps=[].
 - If bugs found: isCorrect=false, bugs=["description..."], correctedCode="...", then simulate the CORRECTED code.`;
 
-/* ─── Demo algorithms ─────────────────────────────────────────────── */
+/* ─── Demo algorithms (15+) ───────────────────────────────────────── */
 interface DemoEntry {
   label: string;
   lang: string;
+  category: string;
   code: string;
 }
 
-type DemoKey = "bubble" | "binary" | "selection" | "insertion" | "two_ptr" | "remove_dup" | "linear" | "fib_dp";
+type DemoKey =
+  | "bubble" | "selection" | "insertion" | "merge" | "quick"
+  | "binary" | "linear"
+  | "two_ptr" | "remove_dup"
+  | "sliding_max" | "longest_no_repeat"
+  | "fib_dp" | "coin_change"
+  | "inorder" | "bfs";
 
 const DEMOS: Record<DemoKey, DemoEntry> = {
+  /* ── Sorting ── */
   bubble: {
-    label: "Bubble Sort", lang: "C++",
+    label: "Bubble Sort", lang: "C++", category: "Sorting",
     code: `// C++ — Bubble Sort
 void bubbleSort(int arr[], int n) {
     for (int i = 0; i < n - 1; i++) {
@@ -120,23 +177,8 @@ void bubbleSort(int arr[], int n) {
     }
 }`,
   },
-  binary: {
-    label: "Binary Search", lang: "Python",
-    code: `# Python — Binary Search
-def binary_search(arr, target):
-    left, right = 0, len(arr) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if arr[mid] == target:
-            return mid
-        elif arr[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1`,
-  },
   selection: {
-    label: "Selection Sort", lang: "Java",
+    label: "Selection Sort", lang: "Java", category: "Sorting",
     code: `// Java — Selection Sort
 void selectionSort(int[] arr) {
     int n = arr.length;
@@ -152,7 +194,7 @@ void selectionSort(int[] arr) {
 }`,
   },
   insertion: {
-    label: "Insertion Sort", lang: "Python",
+    label: "Insertion Sort", lang: "Python", category: "Sorting",
     code: `# Python — Insertion Sort
 def insertion_sort(arr):
     for i in range(1, len(arr)):
@@ -164,8 +206,80 @@ def insertion_sort(arr):
         arr[j + 1] = key
     return arr`,
   },
+  merge: {
+    label: "Merge Sort", lang: "Python", category: "Sorting",
+    code: `# Python — Merge Sort
+def merge_sort(arr):
+    if len(arr) <= 1:
+        return arr
+    mid = len(arr) // 2
+    left = merge_sort(arr[:mid])
+    right = merge_sort(arr[mid:])
+    return merge(left, right)
+
+def merge(left, right):
+    result = []
+    i = j = 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            result.append(left[i]); i += 1
+        else:
+            result.append(right[j]); j += 1
+    result.extend(left[i:]); result.extend(right[j:])
+    return result`,
+  },
+  quick: {
+    label: "Quick Sort", lang: "C++", category: "Sorting",
+    code: `// C++ — Quick Sort
+int partition(int arr[], int low, int high) {
+    int pivot = arr[high];
+    int i = low - 1;
+    for (int j = low; j < high; j++) {
+        if (arr[j] <= pivot) {
+            i++;
+            swap(arr[i], arr[j]);
+        }
+    }
+    swap(arr[i + 1], arr[high]);
+    return i + 1;
+}
+void quickSort(int arr[], int low, int high) {
+    if (low < high) {
+        int pi = partition(arr, low, high);
+        quickSort(arr, low, pi - 1);
+        quickSort(arr, pi + 1, high);
+    }
+}`,
+  },
+  /* ── Searching ── */
+  binary: {
+    label: "Binary Search", lang: "Python", category: "Searching",
+    code: `# Python — Binary Search
+def binary_search(arr, target):
+    left, right = 0, len(arr) - 1
+    while left <= right:
+        mid = (left + right) // 2
+        if arr[mid] == target:
+            return mid
+        elif arr[mid] < target:
+            left = mid + 1
+        else:
+            right = mid - 1
+    return -1`,
+  },
+  linear: {
+    label: "Linear Search", lang: "C++", category: "Searching",
+    code: `// C++ — Linear Search
+int linearSearch(int arr[], int n, int target) {
+    for (int i = 0; i < n; i++) {
+        if (arr[i] == target) return i;
+    }
+    return -1;
+}`,
+  },
+  /* ── Two Pointers ── */
   two_ptr: {
-    label: "Two Pointers", lang: "JS",
+    label: "Two Sum", lang: "JS", category: "Two Pointers",
     code: `// JavaScript — Two Sum (sorted array)
 function twoSum(arr, target) {
     let left = 0, right = arr.length - 1;
@@ -179,7 +293,7 @@ function twoSum(arr, target) {
 }`,
   },
   remove_dup: {
-    label: "Remove Duplicates", lang: "C++",
+    label: "Remove Duplicates", lang: "C++", category: "Two Pointers",
     code: `// C++ — Remove Duplicates from Sorted Array
 int removeDuplicates(vector<int>& nums) {
     int count = 1;
@@ -192,18 +306,39 @@ int removeDuplicates(vector<int>& nums) {
     return count;
 }`,
   },
-  linear: {
-    label: "Linear Search", lang: "C++",
-    code: `// C++ — Linear Search
-int linearSearch(int arr[], int n, int target) {
-    for (int i = 0; i < n; i++) {
-        if (arr[i] == target) return i;
+  /* ── Sliding Window ── */
+  sliding_max: {
+    label: "Max Subarray Sum", lang: "JS", category: "Sliding Window",
+    code: `// JavaScript — Max Sum Subarray of size k (Sliding Window)
+function maxSumSubarray(arr, k) {
+    let windowSum = 0;
+    for (let i = 0; i < k; i++) windowSum += arr[i];
+    let maxSum = windowSum;
+    for (let i = k; i < arr.length; i++) {
+        windowSum += arr[i] - arr[i - k];
+        maxSum = Math.max(maxSum, windowSum);
     }
-    return -1;
+    return maxSum;
 }`,
   },
+  longest_no_repeat: {
+    label: "Longest Unique Substr", lang: "Python", category: "Sliding Window",
+    code: `# Python — Longest Substring Without Repeating Characters
+def length_of_longest_substring(s):
+    char_set = set()
+    left = 0
+    max_len = 0
+    for right in range(len(s)):
+        while s[right] in char_set:
+            char_set.remove(s[left])
+            left += 1
+        char_set.add(s[right])
+        max_len = max(max_len, right - left + 1)
+    return max_len`,
+  },
+  /* ── Dynamic Programming ── */
   fib_dp: {
-    label: "Fibonacci DP", lang: "Python",
+    label: "Fibonacci DP", lang: "Python", category: "DP",
     code: `# Python — Fibonacci (Dynamic Programming)
 def fibonacci(n):
     dp = [0] * (n + 1)
@@ -212,6 +347,60 @@ def fibonacci(n):
         dp[i] = dp[i - 1] + dp[i - 2]
     return dp[n]`,
   },
+  coin_change: {
+    label: "Coin Change", lang: "Python", category: "DP",
+    code: `# Python — Coin Change (minimum coins)
+def coin_change(coins, amount):
+    dp = [float('inf')] * (amount + 1)
+    dp[0] = 0
+    for i in range(1, amount + 1):
+        for coin in coins:
+            if coin <= i:
+                dp[i] = min(dp[i], dp[i - coin] + 1)
+    return dp[amount] if dp[amount] != float('inf') else -1`,
+  },
+  /* ── Tree ── */
+  inorder: {
+    label: "Inorder Traversal", lang: "Java", category: "Tree",
+    code: `// Java — Binary Tree Inorder Traversal
+void inorder(TreeNode root, List<Integer> result) {
+    if (root == null) return;
+    inorder(root.left, result);
+    result.add(root.val);
+    inorder(root.right, result);
+}`,
+  },
+  /* ── Graph / BFS ── */
+  bfs: {
+    label: "BFS", lang: "Python", category: "Graph",
+    code: `# Python — Breadth-First Search (BFS)
+from collections import deque
+
+def bfs(graph, start):
+    visited = set()
+    queue = deque([start])
+    visited.add(start)
+    order = []
+    while queue:
+        node = queue.popleft()
+        order.append(node)
+        for neighbor in graph[node]:
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append(neighbor)
+    return order`,
+  },
+};
+
+/* ─── Category colors ─────────────────────────────────────────────── */
+const CATEGORY_COLORS: Record<string, string> = {
+  "Sorting":       "#3b82f6",
+  "Searching":     "#8b5cf6",
+  "Two Pointers":  "#06b6d4",
+  "Sliding Window":"#f59e0b",
+  "DP":            "#10b981",
+  "Tree":          "#ec4899",
+  "Graph":         "#f97316",
 };
 
 /* ─── Cell color map ──────────────────────────────────────────────── */
@@ -232,6 +421,15 @@ const COLORS: Record<CellStateKey, CellStyle> = {
   idle:       { bg: "#ffffff", border: "#e2e8f0", text: "#334155" },
 };
 
+const DARK_COLORS: Record<CellStateKey, CellStyle> = {
+  active:     { bg: "#1e3a5f", border: "#3b82f6", text: "#93c5fd" },
+  secondary:  { bg: "#3d2f0a", border: "#f59e0b", text: "#fcd34d" },
+  done:       { bg: "#0a2e1a", border: "#22c55e", text: "#4ade80" },
+  eliminated: { bg: "#1e293b", border: "#475569", text: "#475569" },
+  swap:       { bg: "#2d1f52", border: "#8b5cf6", text: "#c4b5fd" },
+  idle:       { bg: "#1e293b", border: "#334155", text: "#94a3b8" },
+};
+
 function cellState(idx: number, step: VisualizationStep | null): CellStateKey {
   if (!step) return "idle";
   if (step.swap?.includes(idx))       return "swap";
@@ -245,14 +443,16 @@ function cellState(idx: number, step: VisualizationStep | null): CellStateKey {
 /* ─── ArrayViz ────────────────────────────────────────────────────── */
 interface ArrayVizProps {
   step: VisualizationStep | null;
+  dark: boolean;
 }
 
-function ArrayViz({ step }: ArrayVizProps): React.ReactElement | null {
+function ArrayViz({ step, dark }: ArrayVizProps): React.ReactElement | null {
   if (!step?.arr?.length) return null;
+  const palette = dark ? DARK_COLORS : COLORS;
   return (
     <div className="array-viz">
       {step.arr.map((val, idx) => {
-        const s   = COLORS[cellState(idx, step)];
+        const s   = palette[cellState(idx, step)];
         const ptr = step.pointers?.[String(idx)] ?? step.pointers?.[idx];
         return (
           <div key={idx} className="array-cell-wrapper">
@@ -332,6 +532,84 @@ function Dots(): React.ReactElement {
   return <span>Analyzing{d}</span>;
 }
 
+/* ─── API Key Modal ───────────────────────────────────────────────── */
+interface ApiKeyModalProps {
+  current: string;
+  onSave: (key: string) => void;
+  onClose: () => void;
+}
+
+function ApiKeyModal({ current, onSave, onClose }: ApiKeyModalProps): React.ReactElement {
+  const [val, setVal] = useState<string>(current);
+  const [show, setShow] = useState<boolean>(false);
+
+  function handleSave(): void {
+    onSave(val.trim());
+    onClose();
+  }
+
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="API Key Settings">
+      <div className="modal">
+        <div className="modal__header">
+          <span className="modal__title">🔑 Groq API Key</span>
+          <button className="modal__close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+        <div className="modal__body">
+          <p className="modal__desc">
+            Your key is stored only in <code>sessionStorage</code> and cleared when you close the tab.
+            It's never sent to any server other than Groq.
+          </p>
+          <p className="modal__desc">
+            Get a free key at{" "}
+            <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer">
+              console.groq.com
+            </a>
+          </p>
+          <div className="modal__field">
+            <label className="field__label" htmlFor="api-key-input">API Key</label>
+            <div className="modal__input-row">
+              <input
+                id="api-key-input"
+                type={show ? "text" : "password"}
+                value={val}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVal(e.target.value)}
+                placeholder="gsk_..."
+                className="field__input modal__key-input"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button
+                className="btn btn-ghost modal__eye"
+                onClick={() => setShow(s => !s)}
+                aria-label={show ? "Hide key" : "Show key"}
+              >
+                {show ? "🙈" : "👁"}
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="modal__footer">
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleSave}>Save Key</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Share Toast ─────────────────────────────────────────────────── */
+interface ShareToastProps {
+  visible: boolean;
+}
+function ShareToast({ visible }: ShareToastProps): React.ReactElement {
+  return (
+    <div className={clsx("share-toast", visible && "share-toast--visible")} role="status" aria-live="polite">
+      ✓ Link copied to clipboard
+    </div>
+  );
+}
+
 /* ─── Speed / label maps ──────────────────────────────────────────── */
 const SPEEDS: readonly number[]  = [1500, 850, 480, 210, 75] as const;
 const SLABELS: readonly string[] = ["Slowest", "Slow", "Normal", "Fast", "Fastest"] as const;
@@ -343,14 +621,14 @@ type Phase = "idle" | "analyzing" | "done" | "error";
 interface PlaybackState {
   stepIdx: number;
   playing: boolean;
-  speed: number;  // 1–5
+  speed: number;
 }
 
 type PlaybackAction =
   | { type: "PLAY_TOGGLE"; totalSteps: number }
-  | { type: "NEXT";  totalSteps: number }   // used by auto-play tick only
-  | { type: "STEP_NEXT"; totalSteps: number } // manual forward button
-  | { type: "STEP_PREV" }                    // manual back button
+  | { type: "NEXT";  totalSteps: number }
+  | { type: "STEP_NEXT"; totalSteps: number }
+  | { type: "STEP_PREV" }
   | { type: "PREV" }
   | { type: "RESET" }
   | { type: "SEEK"; idx: number }
@@ -366,17 +644,10 @@ function playbackReducer(state: PlaybackState, action: PlaybackAction): Playback
       return { ...state, playing: !state.playing };
     case "NEXT": {
       const nextIdx = Math.min(state.stepIdx + 1, action.totalSteps - 1);
-      // Stop playing automatically when we reach the last step
       const reachedEnd = nextIdx >= action.totalSteps - 1;
-      return {
-        ...state,
-        stepIdx: nextIdx,
-        // Only stop if triggered manually (playing=false) or we hit the end
-        playing: state.playing && !reachedEnd,
-      };
+      return { ...state, stepIdx: nextIdx, playing: state.playing && !reachedEnd };
     }
     case "STEP_NEXT":
-      // Manual forward — always stops playback
       return { ...state, playing: false, stepIdx: Math.min(state.stepIdx + 1, action.totalSteps - 1) };
     case "STEP_PREV":
     case "PREV":
@@ -396,12 +667,80 @@ function playbackReducer(state: PlaybackState, action: PlaybackAction): Playback
 
 const initialPlayback: PlaybackState = { stepIdx: 0, playing: false, speed: 3 };
 
+/* ─── Category filter tabs ────────────────────────────────────────── */
+const ALL_CATEGORIES = ["All", "Sorting", "Searching", "Two Pointers", "Sliding Window", "DP", "Tree", "Graph"] as const;
+type CategoryFilter = typeof ALL_CATEGORIES[number];
+
 /* ═══════════════════════════════════════════════════════════════════ */
 export default function App(): React.ReactElement {
-  const [code,        setCode]        = useState<string>(DEMOS.bubble.code);
-  const [activeDemo,  setActiveDemo]  = useState<DemoKey | "">( "bubble");
+  /* ── Dark mode ────────────────────────────────────────────────── */
+  const [dark, setDark] = useState<boolean>(() => {
+    const stored = localStorage.getItem("algviz_dark");
+    return stored !== null ? stored === "1" : getSystemDark();
+  });
+
+  useEffect(() => {
+    applyDark(dark);
+    localStorage.setItem("algviz_dark", dark ? "1" : "0");
+  }, [dark]);
+
+  // Also respond to system preference changes
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent): void => {
+      if (localStorage.getItem("algviz_dark") === null) {
+        setDark(e.matches);
+      }
+    };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  /* ── API key state ────────────────────────────────────────────── */
+  const [apiKey,       setApiKey]       = useState<string>(getStoredKey);
+  const [showKeyModal, setShowKeyModal] = useState<boolean>(false);
+
+  function handleSaveKey(key: string): void {
+    setApiKey(key);
+    saveKey(key);
+  }
+
+  /* ── Share state ──────────────────────────────────────────────── */
+  const [shareToast, setShareToast] = useState<boolean>(false);
+
+  function copyShareLink(): void {
+    const url = encodeShare({ code, arr: customInput || undefined });
+    navigator.clipboard.writeText(url).then(() => {
+      setShareToast(true);
+      setTimeout(() => setShareToast(false), 2500);
+    }).catch(() => {
+      // Fallback: select a temp input
+      const el = document.createElement("input");
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setShareToast(true);
+      setTimeout(() => setShareToast(false), 2500);
+    });
+  }
+
+  /* ── Category filter ──────────────────────────────────────────── */
+  const [catFilter, setCatFilter] = useState<CategoryFilter>("All");
+
+  /* ── Core state ───────────────────────────────────────────────── */
+  const [code,        setCode]        = useState<string>(() => {
+    const shared = decodeShare();
+    return shared?.code ?? DEMOS.bubble.code;
+  });
+  const [activeDemo,  setActiveDemo]  = useState<DemoKey | "">(() => {
+    return decodeShare() ? "" : "bubble";
+  });
   const [model,       setModel]       = useState<string>(DEFAULT_MODEL);
-  const [customInput, setCustomInput] = useState<string>("");
+  const [customInput, setCustomInput] = useState<string>(() => {
+    return decodeShare()?.arr ?? "";
+  });
   const [phase,       setPhase]       = useState<Phase>("idle");
   const [analysis,    setAnalysis]    = useState<AlgorithmAnalysis | null>(null);
   const [error,       setError]       = useState<string>("");
@@ -409,7 +748,7 @@ export default function App(): React.ReactElement {
   const [pb, dispatch] = useReducer(playbackReducer, initialPlayback);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /* ── load demo ────────────────────────────────────────────────── */
+  /* ── Load demo ────────────────────────────────────────────────── */
   function loadDemo(key: DemoKey): void {
     setCode(DEMOS[key].code);
     setActiveDemo(key);
@@ -419,15 +758,21 @@ export default function App(): React.ReactElement {
     dispatch({ type: "STOP" });
     setCustomInput("");
     if (timerRef.current) clearTimeout(timerRef.current);
+    // Clear share params from URL
+    if (window.location.search) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
   }
 
-  /* ── analyze ──────────────────────────────────────────────────── */
+  /* ── Analyze ──────────────────────────────────────────────────── */
   async function analyze(): Promise<void> {
     if (!code.trim()) return;
 
-    if (!GROQ_API_KEY || GROQ_API_KEY.trim() === "") {
-      setError("No API key. Add VITE_groqApi=your_key to the .env file, then restart the dev server.");
+    const key = apiKey.trim();
+    if (!key) {
+      setError("No API key. Click the key icon in the header to add your Groq API key.");
       setPhase("error");
+      setShowKeyModal(true);
       return;
     }
 
@@ -447,7 +792,7 @@ export default function App(): React.ReactElement {
         method: "POST",
         headers: {
           "Content-Type":  "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Authorization": `Bearer ${key}`,
         },
         body: JSON.stringify({
           model,
@@ -463,7 +808,7 @@ export default function App(): React.ReactElement {
       if (!res.ok) {
         const d = await res.json().catch(() => ({})) as { error?: { message?: string } };
         const msg = d?.error?.message ?? "";
-        if (res.status === 401) throw new Error("Invalid API key. Check your .env file.");
+        if (res.status === 401) throw new Error("Invalid API key — check it in the key settings (🔑 in header).");
         if (res.status === 429) throw new Error("Rate limit hit. Wait a moment and try again.");
         if (res.status === 400 && msg.includes("model")) {
           throw new Error(`Model "${model}" is not available on your Groq plan. Try a different model.`);
@@ -501,7 +846,7 @@ export default function App(): React.ReactElement {
     }
   }
 
-  /* ── playback helpers ─────────────────────────────────────────── */
+  /* ── Playback helpers ─────────────────────────────────────────── */
   const steps = analysis?.steps ?? [];
   const cur   = steps[pb.stepIdx] ?? null;
 
@@ -530,7 +875,7 @@ export default function App(): React.ReactElement {
     dispatch({ type: "SEEK", idx: Math.round(pct * (steps.length - 1)) });
   }
 
-  /* ── keyboard shortcuts ───────────────────────────────────────── */
+  /* ── Keyboard shortcuts ───────────────────────────────────────── */
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (!steps.length) return;
@@ -546,7 +891,7 @@ export default function App(): React.ReactElement {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [steps.length, pb.stepIdx, pb.playing]);
 
-  /* ── status badge ─────────────────────────────────────────────── */
+  /* ── Status badge ─────────────────────────────────────────────── */
   const BADGE: Record<Phase, { label: string; cls: string }> = {
     idle:      { label: "Idle",         cls: "badge-idle"      },
     analyzing: { label: "Analyzing…",   cls: "badge-analyzing" },
@@ -555,7 +900,7 @@ export default function App(): React.ReactElement {
   };
   const badge = BADGE[phase];
 
-  /* ── metric tiles data ────────────────────────────────────────── */
+  /* ── Metric tiles ─────────────────────────────────────────────── */
   type MetricTuple = [string, string, string];
   const metricTiles: MetricTuple[] = analysis
     ? [
@@ -566,38 +911,109 @@ export default function App(): React.ReactElement {
       ]
     : [];
 
+  /* ── Filtered demos ───────────────────────────────────────────── */
+  const filteredDemos = (Object.entries(DEMOS) as Array<[DemoKey, DemoEntry]>).filter(
+    ([, d]) => catFilter === "All" || d.category === catFilter
+  );
+
   /* ══════════════════════════════════════════════════════════════ */
   return (
-    <div className="app">
-      <div className="app__inner">
+    <div className={clsx("app", dark && "app--dark")}>
+      {/* ── NAVBAR ────────────────────────────────────────────── */}
+      <nav className="navbar">
+        <div className="navbar__brand">
+          <span className="navbar__logo" aria-hidden="true">⬡</span>
+          <span className="navbar__name">AlgoViz <span className="navbar__pro">Pro</span></span>
+        </div>
+        <div className="navbar__actions">
+          {/* Key status indicator */}
+          <button
+            className={clsx("btn btn-nav", apiKey ? "btn-nav--keyed" : "btn-nav--nokey")}
+            onClick={() => setShowKeyModal(true)}
+            title={apiKey ? "API key configured — click to change" : "No API key — click to add"}
+            aria-label="Manage API key"
+          >
+            🔑 {apiKey ? "Key set" : "Add key"}
+          </button>
 
-        {/* ── HEADER ──────────────────────────────────────────── */}
+          {/* Share button — only visible when there's code */}
+          {code.trim() && (
+            <button
+              className="btn btn-nav"
+              onClick={copyShareLink}
+              title="Copy shareable link"
+              aria-label="Copy shareable link"
+            >
+              🔗 Share
+            </button>
+          )}
+
+          {/* Dark mode toggle */}
+          <button
+            className="btn btn-nav btn-nav--icon"
+            onClick={() => setDark(d => !d)}
+            title={dark ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {dark ? "☀" : "🌙"}
+          </button>
+        </div>
+      </nav>
+
+      <div className="app__inner">
+        {/* ── HERO HEADER ───────────────────────────────────────── */}
         <header className="header">
           <div className="header__left">
-            <p className="header__eyebrow">DSA Lab</p>
+            <p className="header__eyebrow">Algorithm Visualizer</p>
             <h1 className="header__title">
-              Algorithm Analyzer
-              <span className="header__title-accent"> &amp; Visualizer</span>
+              Write, analyze &amp; debug
+              <span className="header__title-accent"> algorithms</span>
             </h1>
+            <p className="header__sub">
+              AI-powered Big-O analysis · Step-by-step execution · Line-by-line explanations
+            </p>
           </div>
-          <span className={clsx("badge", badge.cls)}>{badge.label}</span>
+          <span className={clsx("badge", badge.cls)} aria-live="polite">{badge.label}</span>
         </header>
 
-        {/* ── INPUT CARD ──────────────────────────────────────── */}
+        {/* ── SHARED CODE BANNER ────────────────────────────────── */}
+        {decodeShare() && (
+          <div className="alert alert-share">
+            <strong>🔗 Shared snippet loaded</strong>
+            <p>Someone shared this algorithm with you. Click "Analyze + Visualize" to run it.</p>
+          </div>
+        )}
+
+        {/* ── INPUT CARD ────────────────────────────────────────── */}
         <div className="card">
           <div className="card-head">
             <span className="card-head__label">Your Code</span>
             <span className="card-head__sub">C++ · Python · Java · JavaScript</span>
           </div>
 
+          {/* Category filter tabs */}
+          <div className="cat-tabs">
+            {ALL_CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCatFilter(cat)}
+                className={clsx("cat-tab", catFilter === cat && "cat-tab--on")}
+                style={catFilter === cat && cat !== "All" ? { borderColor: CATEGORY_COLORS[cat], color: CATEGORY_COLORS[cat] } : {}}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
           {/* Demo strip */}
           <div className="demo-strip">
             <span className="demo-strip__label">Demo:</span>
-            {(Object.entries(DEMOS) as Array<[DemoKey, DemoEntry]>).map(([key, d]) => (
+            {filteredDemos.map(([key, d]) => (
               <button
                 key={key}
                 onClick={() => loadDemo(key)}
                 className={clsx("demo-chip", activeDemo === key && "demo-chip--on")}
+                style={activeDemo === key ? { borderColor: CATEGORY_COLORS[d.category] ?? "#3b82f6" } : {}}
               >
                 {d.label}
                 <span className="demo-chip__lang">{d.lang}</span>
@@ -718,7 +1134,7 @@ export default function App(): React.ReactElement {
                   </div>
                 )}
 
-                {/* ── VISUALIZATION ───────────────────────────── */}
+                {/* ── VISUALIZATION ─────────────────────────── */}
                 {steps.length > 0 && (
                   <div className="card viz-card">
                     <div className="viz-topbar">
@@ -738,7 +1154,7 @@ export default function App(): React.ReactElement {
                       {/* LEFT — array state */}
                       <div className="viz-col viz-col--left">
                         <p className="section-label">Array state</p>
-                        <ArrayViz step={cur} />
+                        <ArrayViz step={cur} dark={dark} />
 
                         <div className="legend">
                           {(
@@ -794,10 +1210,11 @@ export default function App(): React.ReactElement {
                         {pb.playing ? "⏸ Pause" : "▶ Play"}
                       </button>
 
-                      <button onClick={goBack}    disabled={pb.stepIdx === 0}                  className="btn btn-ctrl" title="Step back (←)">‹ Back</button>
-                      <button onClick={goForward} disabled={pb.stepIdx >= steps.length - 1}    className="btn btn-ctrl" title="Step forward (→)">Next ›</button>
-                      <button onClick={resetViz}                                                className="btn btn-ctrl" title="Reset (R)">↺ Reset</button>
+                      <button onClick={goBack}    disabled={pb.stepIdx === 0}                   className="btn btn-ctrl" title="Step back (←)">‹ Back</button>
+                      <button onClick={goForward} disabled={pb.stepIdx >= steps.length - 1}     className="btn btn-ctrl" title="Step forward (→)">Next ›</button>
+                      <button onClick={resetViz}                                                 className="btn btn-ctrl" title="Reset (R)">↺ Reset</button>
 
+                      {/* Seekable progress bar */}
                       <div
                         className="progress"
                         role="slider"
@@ -807,10 +1224,7 @@ export default function App(): React.ReactElement {
                         aria-valuenow={pb.stepIdx + 1}
                         tabIndex={0}
                         onClick={seekTo}
-                        onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
-                          if (e.key === "ArrowRight") goForward();
-                          if (e.key === "ArrowLeft")  goBack();
-                        }}
+                        onKeyDown={(e) => { if (e.key === "ArrowRight") goForward(); if (e.key === "ArrowLeft") goBack(); }}
                         title="Click to seek"
                       >
                         <div
@@ -819,6 +1233,7 @@ export default function App(): React.ReactElement {
                         />
                       </div>
 
+                      {/* Speed slider */}
                       <div className="speed">
                         <label className="speed__label" htmlFor="speed-range">Speed</label>
                         <input
@@ -837,7 +1252,7 @@ export default function App(): React.ReactElement {
                   </div>
                 )}
 
-                {/* ── LINE-BY-LINE ─────────────────────────────── */}
+                {/* ── LINE-BY-LINE ──────────────────────────── */}
                 {analysis.codeLines?.length > 0 && (
                   <div className="card">
                     <div className="card-head"><span className="card-head__label">Line-by-line explanation</span></div>
@@ -845,10 +1260,7 @@ export default function App(): React.ReactElement {
                       <div
                         key={i}
                         className="explain-row"
-                        style={{
-                          borderBottom:
-                            i < analysis.codeLines.length - 1 ? "1px solid #f1f5f9" : "none",
-                        }}
+                        style={{ borderBottom: i < analysis.codeLines.length - 1 ? "1px solid #f1f5f9" : "none" }}
                       >
                         <span className="explain-row__num">{i + 1}</span>
                         <code className="explain-row__code">{item.line}</code>
@@ -865,23 +1277,43 @@ export default function App(): React.ReactElement {
         {/* ── EMPTY STATE ─────────────────────────────────────── */}
         {phase === "idle" && !analysis && (
           <div className="empty">
-            <div className="empty__icon">{"</>"}</div>
+            <div className="empty__icon" aria-hidden="true">{"</>"}</div>
             <p className="empty__title">Paste any DSA algorithm above</p>
             <p className="empty__body">
-              Pick a demo or paste your own code. The AI will detect bugs, explain
-              every line, and animate each step so you can follow along at your own pace.
+              Choose from 15+ demos across 7 categories or paste your own code.
+              The AI detects bugs, explains every line, and animates each step so you can follow at your own pace.
             </p>
+            <div className="empty__chips">
+              {(["bubble", "binary", "two_ptr", "fib_dp", "bfs"] as DemoKey[]).map(k => (
+                <button key={k} className="demo-chip" onClick={() => loadDemo(k)}>
+                  {DEMOS[k].label}
+                  <span className="demo-chip__lang">{DEMOS[k].lang}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* ── FOOTER ──────────────────────────────────────────── */}
+        {/* ── FOOTER ────────────────────────────────────────── */}
         <footer className="footer">
+          <span>AlgoViz Pro</span>
+          <span className="footer__sep">·</span>
           Powered by{" "}
           <a href="https://groq.com" target="_blank" rel="noopener noreferrer">Groq</a>
-          {" "}· Model: <code>{model}</code>
+          <span className="footer__sep">·</span>
+          Model: <code>{model}</code>
         </footer>
-
       </div>
+
+      {/* ── MODALS / TOASTS ───────────────────────────────────── */}
+      {showKeyModal && (
+        <ApiKeyModal
+          current={apiKey}
+          onSave={handleSaveKey}
+          onClose={() => setShowKeyModal(false)}
+        />
+      )}
+      <ShareToast visible={shareToast} />
     </div>
   );
 }
