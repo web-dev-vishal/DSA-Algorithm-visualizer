@@ -425,3 +425,58 @@
   .complexity-chip--moderate { background: rgba(245,158,11,0.1); color: #92400e; }
   .complexity-chip--poor     { background: rgba(244,63,94,0.1);  color: #9f1239; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   SaaS PLATFORM GLOBAL UTILITIES
+   ══════════════════════════════════════════════════════════════════ */
+@layer utilities {
+  /* Animate helpers */
+  .animate-fade-up    { animation: fadeUp 0.3s ease both; }
+  .animate-fade-in    { animation: fadeIn 0.2s ease both; }
+  .animate-scale-in   { animation: scaleIn 0.15s ease both; }
+  .animate-slide-down { animation: slideDown 0.2s ease both; }
+
+  /* Gradient text */
+  .text-gradient {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glass surface */
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  html.dark .glass {
+    background: rgba(10, 10, 15, 0.85);
+  }
+
+  /* Card hover lift */
+  .card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Prose for docs/blog */
+  .prose h1 { @apply text-2xl font-extrabold text-zinc-900 dark:text-white mb-4 mt-8; }
+  .prose h2 { @apply text-xl font-bold text-zinc-900 dark:text-white mb-3 mt-6; }
+  .prose h3 { @apply text-base font-bold text-zinc-900 dark:text-white mb-2 mt-4; }
+  .prose p  { @apply text-zinc-600 dark:text-zinc-300 leading-relaxed mb-4; }
+  .prose ul { @apply list-disc list-inside mb-4 space-y-1; }
+  .prose li { @apply text-zinc-600 dark:text-zinc-300; }
+  .prose a  { @apply text-indigo-500 hover:underline; }
+  .prose code { @apply font-mono text-sm bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded; }
+  .prose strong { @apply font-bold text-zinc-900 dark:text-white; }
+  .prose pre { @apply bg-zinc-950 text-zinc-200 rounded-xl p-4 overflow-x-auto font-mono text-sm; }
+  .prose blockquote { @apply border-l-4 border-indigo-500 pl-4 italic text-zinc-500 dark:text-zinc-400; }
+}
+
+/* ── Tailwind v4 dark variant support ──────────────────────────── */
+@variant dark (&:where(.dark, .dark *));
