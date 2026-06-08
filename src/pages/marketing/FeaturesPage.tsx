@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Zap, BarChart3, Shield, Share2, Cpu, ArrowRight } from "lucide-react";
+import { Zap, PlayCircle, BarChart3, Shield, Share2, Cpu, ArrowRight } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 
@@ -11,7 +11,7 @@ const FEATURES = [
     highlights: ["Groq LLM inference < 1s", "Supports C++, Python, Java, JS", "Detects 30+ algorithm patterns", "Custom array input support"],
   },
   {
-    icon: Play, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-950",
+    icon: PlayCircle, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-950",
     tag: "Visualization", title: "Step-by-Step Animation Engine",
     desc: "Every comparison, swap, assignment, and pointer movement is broken down into individual steps. Play, pause, step forward/back, seek to any point, and control playback speed. Pointers are labeled and colored for instant clarity.",
     highlights: ["5 playback speeds", "Step forward/backward", "Seek to any step", "Color-coded cell states"],
