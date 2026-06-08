@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Zap, ArrowRight, Code2, BarChart3, Shield, Share2, Cpu } from "lucide-react";
+import { Zap, BarChart3, Shield, Share2, Cpu, ArrowRight } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 
