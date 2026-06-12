@@ -35,7 +35,7 @@ const TeamPage       = lazy(() => import("./pages/dashboard/TeamPage").then(m =>
 const SettingsPage   = lazy(() => import("./pages/dashboard/SettingsPage").then(m => ({ default: m.SettingsPage })));
 
 // ── The original App (visualizer) ─────────────────────────────────
-const VisualizerApp = lazy(() => import("./App").then(m => ({ default: m.default })));
+const VisualizerApp = lazy(() => import("./components/AppTailwind").then(m => ({ default: m.default })));
 
 // ── Helpers ────────────────────────────────────────────────────────
 function PageLoader() {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { UserPlus, MoreHorizontal, Shield, Crown, User, Mail } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
@@ -27,159 +28,184 @@ export function TeamPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Team</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            Manage your workspace members and permissions.
-          </p>
-        </div>
-        <Button variant="primary" size="sm" leftIcon={<UserPlus className="w-3.5 h-3.5" />} onClick={() => setInviteModal(true)}>
-          Invite member
-        </Button>
-      </div>
+  const containerVariants = {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.08 } }
+  } as const;
 
-      {/* Team overview */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 14 } }
+  } as const;
+
+  return (
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="max-w-4xl mx-auto space-y-6"
+    >
+      {/* Title */}
+      <motion.div 
+        variants={itemVariants}
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200/60 dark:border-zinc-850 pb-5"
+      >
+        <div>
+          <h1 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">Workspace Team</h1>
+          <p className="text-sm text-zinc-550 dark:text-zinc-455 mt-1.5 font-medium">Manage members, update collaborator permissions, and monitor active seats.</p>
+        </div>
+        <Button variant="primary" size="sm" className="shadow-lg shadow-indigo-500/10 flex items-center gap-1.5 text-xs font-bold" leftIcon={<UserPlus className="w-3.5 h-3.5" />} onClick={() => setInviteModal(true)}>
+          Invite Member
+        </Button>
+      </motion.div>
+
+      {/* Team stats counters */}
+      <motion.div 
+        variants={containerVariants}
+        className="grid grid-cols-2 sm:grid-cols-4 gap-4 select-none"
+      >
         {[
-          { label: "Total members", value: "4", sub: "of 5 seats" },
-          { label: "Active",        value: "3", sub: "members" },
-          { label: "Pending",       value: "1", sub: "invitation" },
-          { label: "Seats left",    value: "1", sub: "on Pro plan" },
-        ].map(s => (
-          <Card key={s.label} className="p-4 text-center">
-            <p className="text-2xl font-extrabold text-zinc-900 dark:text-white">{s.value}</p>
-            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{s.label}</p>
-            <p className="text-xs text-zinc-400 mt-0.5">{s.sub}</p>
-          </Card>
+          { label: "Total Members", value: "4", sub: "of 5 seats" },
+          { label: "Active seats",   value: "3", sub: "members verified" },
+          { label: "Pending invites", value: "1", sub: "invitations sent" },
+          { label: "Seats left",      value: "1", sub: "Pro subscription limit" },
+        ].map((s, idx) => (
+          <motion.div variants={itemVariants} key={idx}>
+            <Card className="p-4 text-center glass-card border-zinc-200/60 dark:border-zinc-850/60 shadow-sm flex flex-col justify-center min-h-[6.5rem]">
+              <p className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">{s.value}</p>
+              <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mt-1.5">{s.label}</p>
+              <p className="text-[10px] text-zinc-500 dark:text-zinc-450 mt-1 font-medium">{s.sub}</p>
+            </Card>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {/* Members list */}
-      <Card className="overflow-hidden">
-        <CardHeader>
-          <h2 className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Members ({MEMBERS.length})</h2>
-        </CardHeader>
-        <div className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
-          {MEMBERS.map(m => {
-            const roleConfig = ROLE_CONFIG[m.role as keyof typeof ROLE_CONFIG] ?? ROLE_CONFIG.member;
-            return (
-              <div key={m.id} className="flex items-center gap-4 px-5 py-4 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors group">
-                <Avatar src={m.avatar} name={m.name} size="md" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{m.name}</p>
-                    {m.status === "invited" && (
-                      <Badge variant="warning" className="text-[10px]">Pending</Badge>
-                    )}
+      <motion.div variants={itemVariants}>
+        <Card className="overflow-hidden glass-card border-zinc-200/60 dark:border-zinc-850/60 shadow-sm">
+          <CardHeader className="border-b border-zinc-150 dark:border-zinc-850">
+            <h2 className="text-sm font-bold text-zinc-805 dark:text-white uppercase tracking-wider select-none">Active Members ({MEMBERS.length})</h2>
+          </CardHeader>
+          <div className="divide-y divide-zinc-150 dark:divide-zinc-850">
+            {MEMBERS.map(m => {
+              const roleConfig = ROLE_CONFIG[m.role as keyof typeof ROLE_CONFIG] ?? ROLE_CONFIG.member;
+              return (
+                <div key={m.id} className="flex items-center gap-4 px-5 py-4 hover:bg-zinc-100/30 dark:hover:bg-zinc-900/30 transition-colors group">
+                  <Avatar src={m.avatar} name={m.name} size="md" className="border border-zinc-200/65" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-zinc-900 dark:text-white truncate">{m.name}</p>
+                      {m.status === "invited" && (
+                        <Badge variant="warning" className="text-[9px] font-bold select-none px-2 py-0.5">Pending Invite</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-zinc-450 dark:text-zinc-500 truncate mt-0.5">{m.email}</p>
                   </div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{m.email}</p>
-                </div>
-                <div className="hidden sm:flex items-center gap-2">
-                  <roleConfig.icon className={`w-3.5 h-3.5 ${roleConfig.color}`} />
-                  <Badge variant={roleConfig.variant} className="text-[10px]">{roleConfig.label}</Badge>
-                </div>
-                <p className="text-xs text-zinc-400 hidden md:block whitespace-nowrap">Joined {m.joinedAt}</p>
-                {m.role !== "owner" && (
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="w-3.5 h-3.5" />
-                    </Button>
+                  <div className="hidden sm:flex items-center gap-2 select-none">
+                    <roleConfig.icon className={`w-3.5 h-3.5 ${roleConfig.color}`} />
+                    <Badge variant={roleConfig.variant} className="text-[10px] font-bold py-0.5">{roleConfig.label}</Badge>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </Card>
+                  <p className="text-xs text-zinc-450 dark:text-zinc-500 font-medium hidden md:block whitespace-nowrap">Joined {m.joinedAt}</p>
+                  {m.role !== "owner" && (
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5">
+                      <Button variant="ghost" size="icon" className="w-8 h-8 hover:bg-zinc-150/40">
+                        <MoreHorizontal className="w-4 h-4 text-zinc-450" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </motion.div>
 
-      {/* Roles reference */}
-      <Card className="overflow-hidden">
-        <CardHeader>
-          <h2 className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Role Permissions</h2>
-        </CardHeader>
-        <CardBody>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-left border-b border-zinc-100 dark:border-zinc-800">
-                  <th className="pb-2 pr-6 text-zinc-500 font-semibold">Permission</th>
-                  {Object.entries(ROLE_CONFIG).map(([role, cfg]) => (
-                    <th key={role} className="pb-2 pr-4 text-center">
-                      <Badge variant={cfg.variant} className="text-[10px]">{cfg.label}</Badge>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="text-zinc-600 dark:text-zinc-300">
-                {[
-                  { perm: "Run analyses",          owner: true, admin: true, manager: true, member: true, guest: true },
-                  { perm: "View team history",      owner: true, admin: true, manager: true, member: true, guest: false },
-                  { perm: "Invite members",         owner: true, admin: true, manager: true, member: false, guest: false },
-                  { perm: "Manage roles",           owner: true, admin: true, manager: false, member: false, guest: false },
-                  { perm: "Manage billing",         owner: true, admin: false, manager: false, member: false, guest: false },
-                  { perm: "Delete workspace",       owner: true, admin: false, manager: false, member: false, guest: false },
-                ].map(row => (
-                  <tr key={row.perm} className="border-b border-zinc-50 dark:border-zinc-800/50">
-                    <td className="py-2 pr-6 font-medium">{row.perm}</td>
-                    {["owner", "admin", "manager", "member", "guest"].map(role => (
-                      <td key={role} className="py-2 pr-4 text-center">
-                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                        {(row as any)[role] ? (
-                          <span className="text-emerald-500">✓</span>
-                        ) : (
-                          <span className="text-zinc-300 dark:text-zinc-700">—</span>
-                        )}
-                      </td>
+      {/* Permissions Matrix */}
+      <motion.div variants={itemVariants}>
+        <Card className="overflow-hidden glass-card border-zinc-200/60 dark:border-zinc-850/60 shadow-sm">
+          <CardHeader className="border-b border-zinc-150 dark:border-zinc-850">
+            <h2 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider select-none">Permission Levels Matrix</h2>
+          </CardHeader>
+          <CardBody className="p-6">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left border-b border-zinc-150 dark:border-zinc-850 pb-2 select-none">
+                    <th className="pb-3 pr-6 text-zinc-450 dark:text-zinc-500 font-bold uppercase tracking-wider">Permission Scope</th>
+                    {Object.entries(ROLE_CONFIG).map(([role, cfg]) => (
+                      <th key={role} className="pb-3 pr-4 text-center">
+                        <Badge variant={cfg.variant} className="text-[9px] font-bold py-0.5 select-none">{cfg.label}</Badge>
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardBody>
-      </Card>
+                </thead>
+                <tbody className="text-zinc-650 dark:text-zinc-350 divide-y divide-zinc-100 dark:divide-zinc-900">
+                  {[
+                    { perm: "Execute code analysis", owner: true, admin: true, manager: true, member: true, guest: true },
+                    { perm: "Browse shared history logs", owner: true, admin: true, manager: true, member: true, guest: false },
+                    { perm: "Invite members to workspace", owner: true, admin: true, manager: true, member: false, guest: false },
+                    { perm: "Adjust collaborator roles", owner: true, admin: true, manager: false, member: false, guest: false },
+                    { perm: "Modify subscription billing", owner: true, admin: false, manager: false, member: false, guest: false },
+                    { perm: "Delete current workspace", owner: true, admin: false, manager: false, member: false, guest: false },
+                  ].map(row => (
+                    <tr key={row.perm} className="hover:bg-zinc-100/10 dark:hover:bg-zinc-900/10 transition-colors">
+                      <td className="py-3 pr-6 font-semibold text-zinc-700 dark:text-zinc-300">{row.perm}</td>
+                      {["owner", "admin", "manager", "member", "guest"].map(role => (
+                        <td key={role} className="py-3 pr-4 text-center font-bold text-base select-none">
+                          {row[role as keyof typeof row] ? (
+                            <span className="text-emerald-500">✓</span>
+                          ) : (
+                            <span className="text-zinc-350 dark:text-zinc-750 font-normal">—</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardBody>
+        </Card>
+      </motion.div>
 
-      {/* Invite Modal */}
+      {/* Invite Modal Dialog */}
       <Modal
         open={inviteModal}
         onClose={() => setInviteModal(false)}
         title="Invite Team Member"
-        description="Send an invitation to join your workspace."
+        description="Send an invitation link to join your workspace."
         footer={
           <>
-            <Button variant="ghost" onClick={() => setInviteModal(false)}>Cancel</Button>
-            <Button variant="primary" leftIcon={<Mail className="w-3.5 h-3.5" />} onClick={() => setInviteModal(false)}>
-              Send invitation
+            <Button variant="ghost" className="text-xs font-bold" onClick={() => setInviteModal(false)}>Cancel</Button>
+            <Button variant="primary" className="text-xs font-bold shadow-sm" leftIcon={<Mail className="w-3.5 h-3.5" />} onClick={() => setInviteModal(false)}>
+              Send Invite Link
             </Button>
           </>
         }
       >
-        <div className="space-y-4">
+        <div className="space-y-4 mt-2">
           <Input
-            label="Email address"
+            label="Email Address"
             type="email"
-            placeholder="colleague@company.com"
+            placeholder="colleague@yourcompany.com"
             value={inviteEmail}
             onChange={e => setInviteEmail(e.target.value)}
           />
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Role</label>
+            <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider select-none">Workspace Role</label>
             <select
               value={inviteRole}
               onChange={e => setInviteRole(e.target.value)}
-              className="w-full rounded-[10px] border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
+              className="w-full rounded-xl border border-zinc-250 dark:border-zinc-850 bg-white dark:bg-zinc-900 text-zinc-850 dark:text-zinc-100 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/25"
             >
-              <option value="admin">Admin — full access except billing</option>
-              <option value="manager">Manager — can invite members</option>
-              <option value="member">Member — standard access</option>
-              <option value="guest">Guest — view-only</option>
+              <option value="admin">Admin — full access (excludes billing settings)</option>
+              <option value="manager">Manager — can invite new collaborators</option>
+              <option value="member">Member — standard workspace credentials</option>
+              <option value="guest">Guest — view-only credentials</option>
             </select>
           </div>
         </div>
       </Modal>
-    </div>
+    </motion.div>
   );
 }

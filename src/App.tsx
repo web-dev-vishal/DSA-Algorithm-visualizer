@@ -137,7 +137,6 @@ export default function App(): React.ReactElement {
   const [dark, setDark] = useState<boolean>(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [scrolled, setScrolled] = useState<boolean>(false);
-
   // Sync dark mode state with html tag
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);

@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Link } from "react-router-dom";
 import type React from "react";
 import { clsx } from "clsx";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Play, Pause, RotateCcw, ChevronLeft, ChevronRight, 
+  Code2, AlertTriangle, Check, Info, Terminal, ClipboardCheck
+} from "lucide-react";
 
 /* ─── Groq config ─────────────────────────────────────────────────── */
 const GROQ_API_KEY: string | undefined = import.meta.env.VITE_groqApi as string | undefined;
@@ -11,8 +17,6 @@ interface GroqModel {
   label: string;
 }
 
-// All currently available Groq chat-completion models (June 2025).
-// Any valid Groq API key works with every model listed here.
 const GROQ_MODELS: GroqModel[] = [
   { id: "llama-3.3-70b-versatile",   label: "Llama 3.3 · 70B  (recommended)" },
   { id: "llama3-70b-8192",           label: "Llama 3 · 70B" },
@@ -81,7 +85,6 @@ interface DemoEntry {
   code: string;
 }
 
-/* ─── Demo algorithms ─────────────────────────────────────────────── */
 const DEMOS: Record<string, DemoEntry> = {
   bubble: {
     label: "Bubble Sort", lang: "C++",
@@ -156,30 +159,6 @@ function twoSum(arr, target) {
     return [-1, -1];
 }`,
   },
-  remove_dup: {
-    label: "Remove Duplicates", lang: "C++",
-    code: `// C++ — Remove Duplicates from Sorted Array
-int removeDuplicates(vector<int>& nums) {
-    int count = 1;
-    for (int i = 1; i < nums.size(); i++) {
-        if (nums[i] != nums[i - 1]) {
-            nums[count] = nums[i];
-            count++;
-        }
-    }
-    return count;
-}`,
-  },
-  linear: {
-    label: "Linear Search", lang: "C++",
-    code: `// C++ — Linear Search
-int linearSearch(int arr[], int n, int target) {
-    for (int i = 0; i < n; i++) {
-        if (arr[i] == target) return i;
-    }
-    return -1;
-}`,
-  },
   fib_dp: {
     label: "Fibonacci DP", lang: "Python",
     code: `# Python — Fibonacci (Dynamic Programming)
@@ -192,38 +171,28 @@ def fibonacci(n):
   },
 };
 
-/* ─── Cell color classes mapping for Tailwind ─────────────────────── */
 const CELL_CLASSES: Record<string, string> = {
-  active:     "bg-blue-100 border-blue-500 text-blue-800 dark:bg-blue-950/40 dark:border-blue-500 dark:text-blue-200",
-  secondary:  "bg-amber-100 border-amber-500 text-amber-800 dark:bg-amber-950/40 dark:border-amber-500 dark:text-amber-200",
-  done:       "bg-green-100 border-green-500 text-green-800 dark:bg-green-950/40 dark:border-green-500 dark:text-green-200",
-  eliminated: "bg-slate-100 border-slate-300 text-slate-400 dark:bg-zinc-800/40 dark:border-zinc-700 dark:text-zinc-500",
-  swap:       "bg-violet-100 border-violet-500 text-violet-800 dark:bg-violet-950/40 dark:border-violet-500 dark:text-violet-200",
-  idle:       "bg-white border-slate-200 text-slate-700 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300",
+  active:     "bg-blue-500/10 border-blue-500 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300",
+  secondary:  "bg-amber-500/10 border-amber-500 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300",
+  done:       "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300",
+  eliminated: "bg-zinc-200/50 border-zinc-300 text-zinc-400 dark:bg-zinc-800/40 dark:border-zinc-700 dark:text-zinc-500",
+  swap:       "bg-purple-500/10 border-purple-500 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300",
+  idle:       "bg-white border-zinc-200 text-zinc-700 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300",
 };
 
-/* ─── Dot colors mapping for Tailwind ─────────────────────────────── */
-const DOT_COLORS: Record<string, string> = {
-  "#ff5f57": "bg-[#ff5f57]",
-  "#febc2e": "bg-[#febc2e]",
-  "#28c840": "bg-[#28c840]",
-};
-
-/* ─── Metric text colors mapping for Tailwind ─────────────────────── */
 const METRIC_TEXT_CLASSES = {
-  "var(--c-ink)": "text-slate-900 dark:text-white",
-  "var(--c-blue)": "text-blue-600 dark:text-blue-400",
-  "var(--c-purple)": "text-violet-600 dark:text-violet-400",
+  "var(--c-ink)": "text-indigo-600 dark:text-indigo-400",
+  "var(--c-blue)": "text-blue-650 dark:text-blue-400",
+  "var(--c-purple)": "text-purple-650 dark:text-purple-400",
   "var(--c-cyan)": "text-cyan-600 dark:text-cyan-400",
 } as const;
 
-/* ─── Legend state classes mapping for Tailwind ───────────────────── */
 const LEGEND_CLASSES = {
-  active:     { bg: "bg-blue-100 dark:bg-blue-950/40", border: "border-blue-500" },
-  comparing:  { bg: "bg-amber-100 dark:bg-amber-950/40", border: "border-amber-500" },
-  done:       { bg: "bg-green-100 dark:bg-green-950/40", border: "border-green-500" },
-  swapping:   { bg: "bg-violet-100 dark:bg-violet-950/40", border: "border-violet-500" },
-  skipped:    { bg: "bg-slate-100 dark:bg-zinc-800/40", border: "border-slate-300 dark:border-zinc-700" },
+  active:     { bg: "bg-blue-500/10 dark:bg-blue-950/30", border: "border-blue-500", label: "Comparing" },
+  comparing:  { bg: "bg-amber-500/10 dark:bg-amber-950/30", border: "border-amber-500", label: "Pivot/Ref" },
+  done:       { bg: "bg-emerald-500/10 dark:bg-emerald-950/30", border: "border-emerald-500", label: "Sorted" },
+  swapping:   { bg: "bg-purple-500/10 dark:bg-purple-950/30", border: "border-purple-500", label: "Swapping" },
+  skipped:    { bg: "bg-zinc-100 dark:bg-zinc-800/30", border: "border-zinc-350 dark:border-zinc-700", label: "Eliminated" },
 } as const;
 
 export interface CodeLine {
@@ -270,66 +239,77 @@ function cellState(idx: number, step: VisualizationStep | null): string {
   return "idle";
 }
 
-interface ArrayVizProps {
-  step: VisualizationStep | null;
-}
-
 /* ─── ArrayViz ────────────────────────────────────────────────────── */
-function ArrayViz({ step }: ArrayVizProps): React.ReactElement | null {
+function ArrayViz({ step }: { step: VisualizationStep | null }): React.ReactElement | null {
   if (!step?.arr?.length) return null;
   return (
-    <div className="array-viz flex flex-wrap justify-center items-end gap-3 min-h-[5.5rem] py-2" role="list" aria-label="Array visualization">
-      {step.arr.map((val: number, idx: number) => {
-        const ptr: string | undefined = step.pointers?.[String(idx)] ?? step.pointers?.[idx];
-        return (
-          <div key={idx} className="array-cell-wrapper flex flex-col items-center select-none" role="listitem">
-            <span
-              className={clsx(
-                "array-cell__ptr text-xs font-bold h-5 flex items-center justify-center transition-colors duration-200 mb-1",
-                ptr ? "text-blue-500" : "text-transparent"
-              )}
-              aria-label={ptr ? `pointer ${ptr} at index ${idx}` : undefined}
+    <div className="flex flex-wrap justify-center items-end gap-3 min-h-[6.5rem] py-4" role="list" aria-label="Visualizer array">
+      <AnimatePresence mode="popLayout">
+        {step.arr.map((val: number, idx: number) => {
+          const ptr: string | undefined = step.pointers?.[String(idx)] ?? step.pointers?.[idx];
+          const state = cellState(idx, step);
+          return (
+            <motion.div
+              layout
+              key={`cell-${idx}-${val}`}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              className="flex flex-col items-center select-none"
+              role="listitem"
             >
-              {ptr || "·"}
-            </span>
-            <div
-              className={clsx(
-                "array-cell border-2 rounded-[10px] w-12 h-12 flex items-center justify-center font-extrabold text-sm shadow-sm transition-all duration-200",
-                CELL_CLASSES[cellState(idx, step)]
-              )}
-              title={`[${idx}] = ${val}`}
-            >
-              {val}
-            </div>
-            <span className="array-cell__idx text-[10px] text-slate-400 mt-1 font-mono">[{idx}]</span>
-          </div>
-        );
-      })}
+              {/* Pointer indicator */}
+              <span
+                className={clsx(
+                  "text-xs font-black h-5 flex items-center justify-center transition-colors duration-200 mb-1 px-1.5 rounded bg-zinc-100 dark:bg-zinc-800",
+                  ptr ? "text-indigo-500 opacity-100" : "text-transparent opacity-0"
+                )}
+              >
+                {ptr || "·"}
+              </span>
+
+              {/* Number box */}
+              <motion.div
+                animate={state === "swap" ? { y: [0, -10, 0] } : {}}
+                transition={{ duration: 0.3 }}
+                className={clsx(
+                  "border-2 rounded-xl w-14 h-14 flex items-center justify-center font-black text-base shadow-sm transition-all duration-200",
+                  CELL_CLASSES[state]
+                )}
+                title={`Index [${idx}] = ${val}`}
+              >
+                {val}
+              </motion.div>
+
+              <span className="text-[10px] text-zinc-400 dark:text-zinc-550 mt-1.5 font-mono font-medium">
+                [{idx}]
+              </span>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
     </div>
   );
 }
 
-interface CodePanelProps {
-  lines: CodeLine[];
-  activeLine: number;
-}
-
 /* ─── CodePanel ───────────────────────────────────────────────────── */
-function CodePanel({ lines, activeLine }: CodePanelProps): React.ReactElement {
-  const activeRef: React.MutableRefObject<HTMLDivElement | null> = useRef<HTMLDivElement | null>(null);
+function CodePanel({ lines, activeLine }: { lines: CodeLine[]; activeLine: number }): React.ReactElement {
+  const activeRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [activeLine]);
 
   return (
-    <div className="code-panel flex flex-col h-[28rem] rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/30 overflow-hidden shadow-inner" role="region" aria-label="Code with active line highlighted">
-      <div className="code-panel__titlebar flex items-center gap-1.5 px-4 py-3 bg-slate-100 dark:bg-zinc-900/60 border-b border-slate-200 dark:border-zinc-850" aria-hidden="true">
-        {["#ff5f57", "#febc2e", "#28c840"].map((c: string) => (
-          <span key={c} className={clsx("code-panel__dot w-3 h-3 rounded-full", DOT_COLORS[c])} />
-        ))}
-        <span className="code-panel__filename text-xs font-mono font-medium text-slate-400 dark:text-zinc-500 ml-2">algorithm</span>
+    <div className="flex flex-col h-[28rem] rounded-xl border border-zinc-200 dark:border-zinc-850 bg-zinc-50 dark:bg-zinc-950/40 overflow-hidden shadow-inner" role="region" aria-label="Code highlighting pane">
+      <div className="flex items-center gap-1.5 px-4 py-3 bg-zinc-100 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-850 select-none">
+        <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
+        <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+        <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
+        <span className="text-xs font-mono font-bold text-zinc-450 dark:text-zinc-500 ml-2">sandbox.code</span>
       </div>
-      <div className="code-panel__lines flex-1 overflow-y-auto p-4 font-mono text-sm leading-relaxed" role="list">
+      <div className="flex-1 overflow-y-auto p-4 font-mono text-xs sm:text-sm leading-relaxed" role="list">
         {(lines ?? []).map((item: CodeLine, i: number) => {
           const active: boolean = i === activeLine;
           return (
@@ -337,18 +317,19 @@ function CodePanel({ lines, activeLine }: CodePanelProps): React.ReactElement {
               key={i}
               ref={active ? activeRef : null}
               className={clsx(
-                "code-line flex items-start px-2 py-0.5 rounded transition-colors duration-150 relative group",
-                active ? "code-line--active bg-blue-50 dark:bg-blue-950/20 text-blue-900 dark:text-blue-100 font-medium" : "text-slate-600 dark:text-zinc-400"
+                "flex items-start px-2 py-0.5 rounded transition-all duration-150 border-l-2 relative group",
+                active 
+                  ? "bg-indigo-500/10 border-indigo-500 text-indigo-950 dark:text-indigo-200 font-bold" 
+                  : "border-transparent text-zinc-650 dark:text-zinc-400"
               )}
               role="listitem"
-              aria-current={active ? "true" : undefined}
             >
-              <span className="code-line__num w-6 text-right text-xs text-slate-300 dark:text-zinc-650 pr-3 select-none" aria-hidden="true">{i + 1}</span>
-              <span className="code-line__code flex-1 whitespace-pre-wrap">{item.line}</span>
+              <span className="w-6 text-right text-xs text-zinc-350 dark:text-zinc-650 pr-3 select-none" aria-hidden="true">{i + 1}</span>
+              <span className="flex-1 whitespace-pre-wrap">{item.line}</span>
               {active && item.explain && (
-                <span className="code-line__explain text-xs text-blue-600 dark:text-blue-400 italic pl-4 bg-slate-50 dark:bg-zinc-900 px-2 rounded opacity-90" title={item.explain}>
-                  ← {item.explain}
-                </span>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded shadow-md hidden md:block max-w-xs truncate animate-fade-in" title={item.explain}>
+                  {item.explain}
+                </div>
               )}
             </div>
           );
@@ -358,36 +339,33 @@ function CodePanel({ lines, activeLine }: CodePanelProps): React.ReactElement {
   );
 }
 
-/* ─── Animated dots ───────────────────────────────────────────────── */
-function Dots(): React.ReactElement {
-  const [d, setD] = useState<string>(".");
+function Dots() {
+  const [d, setD] = useState(".");
   useEffect(() => {
-    const t: ReturnType<typeof setInterval> = setInterval(() => setD((p: string) => (p.length >= 3 ? "." : p + ".")), 420);
+    const t = setInterval(() => setD(p => p.length >= 3 ? "." : p + "."), 400);
     return () => clearInterval(t);
   }, []);
-  return <span>Analyzing{d}</span>;
+  return <span className="font-semibold text-xs tracking-wider">Analyzing{d}</span>;
 }
 
-/* ─── Speed / label maps ───────────────────────────────────────────── */
-const SPEEDS: number[] = [1500, 850, 480, 210, 75];
-const SLABELS: string[] = ["Slowest", "Slow", "Normal", "Fast", "Fastest"];
+const SPEEDS = [1500, 850, 480, 210, 75];
+const SLABELS = ["Slowest", "Slow", "Normal", "Fast", "Fastest"];
 
-/* ═══════════════════════════════════════════════════════════════════ */
-export default function App(): React.ReactElement {
-  const [code,        setCode]        = useState<string>(DEMOS.bubble?.code ?? "");
-  const [activeDemo,  setActiveDemo]  = useState<string>("bubble");
-  const [model,       setModel]       = useState<string>(DEFAULT_MODEL);
-  const [customInput, setCustomInput] = useState<string>("");
-  const [phase,       setPhase]       = useState<string>("idle");
-  const [analysis,    setAnalysis]    = useState<AlgorithmAnalysis | null>(null);
-  const [error,       setError]       = useState<string>("");
-  const [stepIdx,     setStepIdx]     = useState<number>(0);
-  const [playing,     setPlaying]     = useState<boolean>(false);
-  const [speed,       setSpeed]       = useState<number>(3);
-  const timerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null> = useRef<ReturnType<typeof setTimeout> | null>(null);
+export default function App() {
+  const [code, setCode] = useState(DEMOS.bubble?.code ?? "");
+  const [activeDemo, setActiveDemo] = useState("bubble");
+  const [model, setModel] = useState(DEFAULT_MODEL);
+  const [customInput, setCustomInput] = useState("");
+  const [phase, setPhase] = useState("idle");
+  const [analysis, setAnalysis] = useState<AlgorithmAnalysis | null>(null);
+  const [error, setError] = useState("");
+  const [stepIdx, setStepIdx] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(3);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /* ── load demo ─────────────────────────────────────────────────── */
-  function loadDemo(key: string): void {
+  function loadDemo(key: string) {
     const demo = DEMOS[key];
     if (demo) {
       setCode(demo.code);
@@ -397,18 +375,14 @@ export default function App(): React.ReactElement {
       setError("");
       setPlaying(false);
       setCustomInput("");
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
+      if (timerRef.current) clearTimeout(timerRef.current);
     }
   }
 
-  /* ── analyze ───────────────────────────────────────────────────── */
-  async function analyze(): Promise<void> {
+  async function analyze() {
     if (!code.trim()) return;
-
     if (!GROQ_API_KEY || GROQ_API_KEY.trim() === "") {
-      setError("No API key. Add VITE_groqApi=your_key to the .env file, then restart the dev server.");
+      setError("Groq API key not configured. Add VITE_groqApi to your env file.");
       setPhase("error");
       return;
     }
@@ -417,81 +391,70 @@ export default function App(): React.ReactElement {
     setAnalysis(null);
     setError("");
     setPlaying(false);
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
+    if (timerRef.current) clearTimeout(timerRef.current);
 
-    let userMsg: string = "Analyze this DSA code and return the JSON:\n\n" + code;
+    let userMsg = "Analyze this DSA code and return the JSON:\n\n" + code;
     if (customInput.trim()) {
       userMsg += `\n\nPlease use this exact array as defaultInput: [${customInput.trim()}]`;
     }
 
     try {
-      const res: Response = await fetch(GROQ_URL, {
+      const res = await fetch(GROQ_URL, {
         method: "POST",
         headers: {
-          "Content-Type":  "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${GROQ_API_KEY}`
         },
         body: JSON.stringify({
           model,
           temperature: 0.1,
-          max_tokens:  8000,
+          max_tokens: 8000,
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
-            { role: "user",   content: userMsg },
-          ],
-        }),
+            { role: "user", content: userMsg }
+          ]
+        })
       });
 
       if (!res.ok) {
-        const d: { error?: { message?: string } } = await res.json().catch(() => ({})) as { error?: { message?: string } };
-        const msg: string = d?.error?.message ?? "";
-        if (res.status === 401) throw new Error("Invalid API key. Check your .env file.");
-        if (res.status === 429) throw new Error("Rate limit hit. Wait a moment and try again.");
-        if (res.status === 400 && msg.includes("model")) {
-          throw new Error(`Model "${model}" is not available on your Groq plan. Try a different model.`);
-        }
-        throw new Error(msg || `Groq API error ${res.status}`);
+        const d = await res.json().catch(() => ({})) as { error?: { message?: string } };
+        throw new Error(d?.error?.message ?? `Groq API returned status ${res.status}`);
       }
 
-      const data: { choices?: Array<{ message?: { content?: string } }> } = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
-      const raw: string = data?.choices?.[0]?.message?.content ?? "";
-
-      // Strip markdown fences the model may accidentally add
-      const clean: string = raw
-        .replace(/^```(?:json)?\s*/i, "")
-        .replace(/\s*```$/,           "")
-        .trim();
+      const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+      const raw = data?.choices?.[0]?.message?.content ?? "";
+      const clean = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
 
       let parsed: AlgorithmAnalysis;
       try {
-        parsed = JSON.parse(clean) as AlgorithmAnalysis;
+        parsed = JSON.parse(clean);
       } catch {
-        const match: RegExpMatchArray | null = clean.match(/\{[\s\S]*\}/);
+        const match = clean.match(/\{[\s\S]*\}/);
         if (match) {
-          parsed = JSON.parse(match[0]) as AlgorithmAnalysis;
+          parsed = JSON.parse(match[0]);
         } else {
-          throw new Error("AI returned invalid JSON. Try again or switch to a larger model.");
+          throw new Error("Failed to parse AI response. Check input array formats.");
         }
       }
 
       setAnalysis(parsed);
       setStepIdx(0);
       setPhase("done");
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Analysis failed. Try again.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Execution verification failed. Try another model.");
       setPhase("error");
     }
   }
 
-  /* ── playback helpers ──────────────────────────────────────────── */
-  const steps: VisualizationStep[] = analysis?.steps ?? [];
-  const cur: VisualizationStep | null = steps[stepIdx] ?? null;
+  const steps = analysis?.steps ?? [];
+  const cur = steps[stepIdx] ?? null;
 
-  const tick: () => void = useCallback((): void => {
-    setStepIdx((p: number): number => {
-      if (p >= steps.length - 1) { setPlaying(false); return p; }
+  const tick = useCallback(() => {
+    setStepIdx(p => {
+      if (p >= steps.length - 1) {
+        setPlaying(false);
+        return p;
+      }
       return p + 1;
     });
   }, [steps.length]);
@@ -500,396 +463,414 @@ export default function App(): React.ReactElement {
     if (!playing) return;
     timerRef.current = setTimeout(tick, SPEEDS[speed - 1]);
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [playing, stepIdx, speed, tick]);
 
-  const handlePlay: () => void = (): void => {
-    if (stepIdx >= steps.length - 1) { setStepIdx(0); setPlaying(true); return; }
-    setPlaying((p: boolean): boolean => !p);
-  };
-  const goBack: () => void = (): void => {
-    setPlaying(false);
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
+  const handlePlay = useCallback(() => {
+    if (stepIdx >= steps.length - 1) {
+      setStepIdx(0);
+      setPlaying(true);
+      return;
     }
-    setStepIdx((p: number): number => Math.max(p - 1, 0));
-  };
-  const goForward: () => void = (): void => {
-    setPlaying(false);
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    setStepIdx((p: number): number => Math.min(p + 1, steps.length - 1));
-  };
-  const resetViz: () => void = (): void => {
-    setPlaying(false);
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    setStepIdx(0);
-  };
+    setPlaying(p => !p);
+  }, [stepIdx, steps.length]);
 
-  function seekTo(e: React.MouseEvent<HTMLDivElement>): void {
-    if (!steps.length) return;
-    const rect: DOMRect = e.currentTarget.getBoundingClientRect();
-    const pct: number = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const goBack = useCallback(() => {
     setPlaying(false);
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
+    setStepIdx(p => Math.max(p - 1, 0));
+  }, []);
+
+  const goForward = useCallback(() => {
+    setPlaying(false);
+    setStepIdx(p => Math.min(p + 1, steps.length - 1));
+  }, [steps.length]);
+
+  const resetViz = useCallback(() => {
+    setPlaying(false);
+    setStepIdx(0);
+  }, []);
+
+  function seekTo(e: React.MouseEvent<HTMLDivElement>) {
+    if (!steps.length) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    setPlaying(false);
     setStepIdx(Math.round(pct * (steps.length - 1)));
   }
 
-  /* ── keyboard shortcuts ────────────────────────────────────────── */
+  function copyCodeText() {
+    navigator.clipboard.writeText(code).then(() => {
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2000);
+    });
+  }
+
+  // Keyboard controls
   useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
+    const onKey = (e: KeyboardEvent) => {
       if (!steps.length) return;
-      const tag: string | undefined = document.activeElement?.tagName;
+      const tag = document.activeElement?.tagName;
       if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") return;
-      if (e.code === "Space")          { e.preventDefault(); handlePlay(); }
-      else if (e.key === "ArrowRight") { e.preventDefault(); goForward(); }
-      else if (e.key === "ArrowLeft")  { e.preventDefault(); goBack(); }
-      else if (e.key === "r" || e.key === "R") resetViz();
+
+      if (e.code === "Space") {
+        e.preventDefault();
+        handlePlay();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goForward();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goBack();
+      } else if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        resetViz();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [steps.length, stepIdx, playing]);
+  }, [steps.length, handlePlay, goForward, goBack, resetViz]);
 
-  /* ── status badge ──────────────────────────────────────────────── */
-  const BADGE: Record<string, { label: string; cls: string }> = {
-    idle:      { label: "Idle",         cls: "badge-idle bg-slate-100 text-slate-700 border-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700" },
-    analyzing: { label: "Analyzing…",   cls: "badge-analyzing bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 animate-pulse" },
-    done:      { label: "Ready",        cls: "badge-done bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800" },
-    error:     { label: "Error",        cls: "badge-error bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800" },
-  };
-  const badge: { label: string; cls: string } = BADGE[phase] ?? { label: "Idle", cls: "badge-idle bg-slate-100 text-slate-700 border-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700" };
+  const BADGE = {
+    idle:      { label: "Ready", shadow: "shadow-zinc-500/10", cls: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400" },
+    analyzing: { label: "Analyzing...", shadow: "shadow-indigo-500/20", cls: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900/60" },
+    done:      { label: "Visualizer Loaded", shadow: "shadow-emerald-500/10", cls: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/60" },
+    error:     { label: "Error", shadow: "shadow-rose-500/10", cls: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/60" },
+  } as const;
+  const badge = BADGE[phase as keyof typeof BADGE] ?? BADGE.idle;
 
-  /* ──────────────────────────────────────────────────────────────── */
   return (
-    <div className="app min-h-screen bg-slate-50 text-slate-800 dark:bg-zinc-950 dark:text-zinc-200 font-sans transition-colors duration-200">
-      <div className="app__inner max-w-5xl mx-auto px-4 py-8 flex flex-col gap-6">
-
+    <div className="min-h-screen bg-zinc-50 text-zinc-850 dark:bg-zinc-950 dark:text-zinc-200 font-sans transition-colors duration-300 py-8 px-4">
+      <div className="max-w-6xl mx-auto flex flex-col gap-6">
+        
         {/* ── HEADER ──────────────────────────────────────────────── */}
-        <header className="header flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-5">
-          <div className="header__left">
-            <p className="header__eyebrow text-xs uppercase tracking-widest text-indigo-500 font-bold">DSA Lab</p>
-            <h1 className="header__title text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-              Algorithm Analyzer
-              <span className="header__title-accent text-indigo-500 font-bold"> &amp; Visualizer</span>
-            </h1>
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-850 pb-5">
+          <div className="flex items-center gap-3">
+            <Link to="/" className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 hover:scale-105 transition-transform">
+              <Code2 className="w-5 h-5" />
+            </Link>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 rounded-full select-none">
+                  DSA Workspace
+                </span>
+              </div>
+              <h1 className="text-2xl font-extrabold text-zinc-900 dark:text-white mt-1">
+                Visual Lab Sandbox
+              </h1>
+            </div>
           </div>
-          <span className={clsx("badge border px-3 py-1 rounded-full text-xs font-semibold select-none", badge.cls)}>{badge.label}</span>
+          <div className={clsx("badge border px-3 py-1 rounded-full text-xs font-semibold select-none flex items-center gap-1.5 shadow-sm", badge.shadow, badge.cls)}>
+            <span className="w-1.5 h-1.5 rounded-full bg-current" />
+            {badge.label}
+          </div>
         </header>
 
-        {/* ── INPUT CARD ──────────────────────────────────────────── */}
-        <div className="card bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
-
-          {/* Card title row */}
-          <div className="card-head flex items-center justify-between border-b border-slate-100 dark:border-zinc-800/60 pb-3">
-            <span className="card-head__label font-bold text-slate-800 dark:text-white text-lg">Your Code</span>
-            <span className="card-head__sub text-xs text-slate-400 dark:text-zinc-500 font-mono">C++ · Python · Java · JavaScript</span>
+        {/* ── IDE WORKSPACE CARD ──────────────────────────────────── */}
+        <div className="glass-card rounded-2xl p-6 shadow-md border border-zinc-200/60 dark:border-zinc-850/60 flex flex-col gap-5 relative">
+          
+          {/* Card Head */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-150 dark:border-zinc-850/60 pb-4">
+            <div className="flex items-center gap-2">
+              <Terminal className="w-4.5 h-4.5 text-zinc-400" />
+              <span className="font-bold text-zinc-800 dark:text-white text-base">Write/Paste Code</span>
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs font-mono select-none">
+              {Object.entries(DEMOS).map(([key, d]) => (
+                <button
+                  key={key}
+                  onClick={() => loadDemo(key)}
+                  className={clsx(
+                    "px-3 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    activeDemo === key
+                      ? "bg-indigo-50 border-indigo-200 text-indigo-650 dark:bg-indigo-950/40 dark:border-indigo-850 dark:text-indigo-400"
+                      : "bg-white border-zinc-200 text-zinc-650 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  )}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Demo strip */}
-          <div className="demo-strip flex items-center flex-wrap gap-2 text-sm">
-            <span className="demo-strip__label text-slate-400 dark:text-zinc-500 font-medium mr-1 select-none">Demo:</span>
-            {Object.entries(DEMOS).map(([key, d]: [string, DemoEntry]) => (
-              <button
-                key={key}
-                onClick={(): void => loadDemo(key)}
-                className={clsx(
-                  "demo-chip px-3 py-1.5 rounded-lg text-xs font-semibold border flex items-center gap-1.5 transition-all select-none hover:bg-slate-50 dark:hover:bg-zinc-800",
-                  activeDemo === key
-                    ? "demo-chip--on bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-400"
-                    : "bg-white border-slate-200 text-slate-600 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400"
-                )}
-                type="button"
-              >
-                {d.label}
-                <span className="demo-chip__lang text-[9px] uppercase px-1 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-zinc-500 font-mono">{d.lang}</span>
-              </button>
-            ))}
+          {/* Textarea Code Block */}
+          <div className="relative">
+            <textarea
+              value={code}
+              onChange={(e) => { setCode(e.target.value); setActiveDemo(""); }}
+              spellCheck={false}
+              className="w-full h-72 p-4 font-mono text-sm border border-zinc-250 dark:border-zinc-850 rounded-xl bg-zinc-900 text-zinc-100 placeholder-zinc-550 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-inner"
+              placeholder="// Paste algorithms here..."
+              aria-label="Code Editor Textarea"
+            />
+            <button
+              onClick={copyCodeText}
+              className="absolute top-3 right-3 p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-350 transition-colors shadow"
+              title="Copy to clipboard"
+            >
+              {codeCopied ? <ClipboardCheck className="w-4 h-4 text-emerald-400 animate-pulse" /> : <Code2 className="w-4 h-4" />}
+            </button>
           </div>
 
-          {/* Textarea */}
-          <textarea
-            value={code}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>): void => { setCode(e.target.value); setActiveDemo(""); }}
-            spellCheck={false}
-            className="code-textarea w-full h-64 p-4 font-mono text-sm border border-slate-200 dark:border-zinc-850 rounded-xl bg-slate-50 dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 text-slate-800 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-650"
-            placeholder="// Paste any DSA algorithm here…"
-            aria-label="DSA code input"
-          />
-
-          {/* Action row */}
-          <div className="action-row flex flex-col md:flex-row items-stretch md:items-end gap-4">
-            {/* Custom input */}
-            <div className="field flex-1 flex flex-col gap-1.5">
-              <label className="field__label text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide" htmlFor="cust-input">Custom array (optional)</label>
+          {/* Actions & Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 items-end gap-4">
+            
+            {/* Custom array inputs */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block" htmlFor="cust-input">Custom Array</label>
               <input
                 id="cust-input"
                 type="text"
                 value={customInput}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>): void => setCustomInput(e.target.value)}
-                placeholder="e.g.  5, 3, 8, 1, 2"
-                className="field__input rounded-xl border border-slate-200 dark:border-zinc-850 bg-slate-50 dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 text-slate-800 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-650"
+                onChange={(e) => setCustomInput(e.target.value)}
+                placeholder="e.g. 5, 3, 8, 1, 2"
+                className="rounded-xl border border-zinc-250 dark:border-zinc-850 bg-white dark:bg-zinc-900 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-zinc-850 dark:text-zinc-100 shadow-sm"
               />
-              <span className="field__hint text-[10px] text-slate-400 dark:text-zinc-550 leading-tight">Overrides the AI-chosen test array</span>
             </div>
 
-            {/* Model selector */}
-            <div className="field flex-1 flex flex-col gap-1.5">
-              <label className="field__label text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide" htmlFor="model-sel">Model</label>
+            {/* Model selectors */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block" htmlFor="model-select">Execution Model</label>
               <select
-                id="model-sel"
+                id="model-select"
                 value={model}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>): void => setModel(e.target.value)}
-                className="field__select rounded-xl border border-slate-200 dark:border-zinc-850 bg-slate-50 dark:bg-zinc-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 text-slate-800 dark:text-zinc-100"
+                onChange={(e) => setModel(e.target.value)}
+                className="rounded-xl border border-zinc-250 dark:border-zinc-850 bg-white dark:bg-zinc-900 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-zinc-850 dark:text-zinc-100 shadow-sm"
               >
-                {GROQ_MODELS.map((m: GroqModel) => (
+                {GROQ_MODELS.map(m => (
                   <option key={m.id} value={m.id}>{m.label}</option>
                 ))}
               </select>
-              <span className="field__hint text-[10px] text-slate-400 dark:text-zinc-550 leading-tight">All models work with any Groq key</span>
             </div>
 
-            {/* Analyze button */}
+            {/* Run Button */}
             <button
-              onClick={(): void => { void analyze(); }}
+              onClick={analyze}
               disabled={phase === "analyzing" || !code.trim()}
-              className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold py-2 px-5 rounded-xl cursor-pointer select-none transition-colors duration-150 flex items-center justify-center min-w-[10rem] shadow-sm hover:shadow active:scale-[0.98]"
-              type="button"
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-2.5 px-6 rounded-xl cursor-pointer select-none transition-all duration-150 flex items-center justify-center shadow-md shadow-indigo-550/20 active:scale-98"
             >
-              {phase === "analyzing" ? <Dots /> : "Analyze + Visualize"}
+              {phase === "analyzing" ? <Dots /> : "Run Visualization"}
             </button>
           </div>
 
-          {/* Error banner */}
+          {/* Error notice */}
           {error && (
-            <div className="error-bar flex items-center gap-3 px-4 py-3 rounded-xl bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400 text-sm border border-rose-100 dark:border-rose-900/30" role="alert">
-              <span className="error-bar__icon text-base font-bold">⚠</span>
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-rose-50 border border-rose-100 text-rose-800 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-350 text-xs sm:text-sm" role="alert">
+              <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
         </div>
 
-        {/* ── RESULTS ─────────────────────────────────────────────── */}
+        {/* ── ANALYSIS RESULT PANELS ──────────────────────────────── */}
         {analysis && (
-          <div className="flex flex-col gap-6">
-            {/* Invalid code */}
+          <div className="flex flex-col gap-6 animate-fade-up">
+            
+            {/* Invalid response fallback */}
             {analysis.isValid === false ? (
-              <div className="alert alert-warn flex flex-col gap-2 p-5 bg-amber-50 text-amber-900 dark:bg-amber-950/20 dark:text-amber-300 rounded-2xl border border-amber-100 dark:border-amber-900/30">
-                <strong className="text-base font-bold flex items-center gap-2">
-                  <span className="text-lg">⚠</span> Invalid / non-DSA code
-                </strong>
-                <p className="text-sm">{analysis.explanation || "Please paste a valid DSA algorithm."}</p>
+              <div className="flex items-start gap-3 p-5 rounded-2xl bg-amber-50 border border-amber-100 text-amber-900 dark:bg-amber-950/20 dark:border-amber-900/30 dark:text-amber-300">
+                <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-bold text-base">Invalid algorithm logic</h3>
+                  <p className="text-sm mt-1 leading-relaxed">{analysis.explanation || "Please submit a standard Data Structure or Algorithm code snippet."}</p>
+                </div>
               </div>
             ) : (
               <>
-                {/* Metrics */}
-                <div className="metrics grid grid-cols-2 md:grid-cols-4 gap-4" role="list" aria-label="Algorithm metrics">
-                  {([
+                {/* Metrics Blocks */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4" role="list" aria-label="Big-O Complexity Metrics">
+                  {[
                     ["Algorithm",  analysis.algorithmName,  "var(--c-ink)"],
                     ["Category",   analysis.category,       "var(--c-blue)"],
-                    ["Time",       analysis.timeComplexity, "var(--c-purple)"],
-                    ["Space",      analysis.spaceComplexity,"var(--c-cyan)"],
-                  ] as const).map(([lbl, val, clr]) => (
-                    <div key={lbl} className="metric-tile p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 flex flex-col gap-1 shadow-sm" role="listitem">
-                      <span className="metric-tile__label text-xs text-slate-400 dark:text-zinc-550 font-semibold uppercase tracking-wider select-none">{lbl}</span>
-                      <span className={clsx("metric-tile__value font-extrabold text-xl", METRIC_TEXT_CLASSES[clr])}>{val}</span>
+                    ["Time Complexity", analysis.timeComplexity, "var(--c-purple)"],
+                    ["Space Complexity", analysis.spaceComplexity, "var(--c-cyan)"],
+                  ].map(([lbl, val, clr]) => (
+                    <div key={lbl} className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-850 flex flex-col gap-1 shadow-sm" role="listitem">
+                      <span className="text-[10px] text-zinc-400 dark:text-zinc-550 font-bold uppercase tracking-widest select-none">{lbl}</span>
+                      <span className={clsx("font-extrabold text-base sm:text-lg", METRIC_TEXT_CLASSES[clr as keyof typeof METRIC_TEXT_CLASSES])}>{val}</span>
                     </div>
                   ))}
                 </div>
 
-                {/* Correctness */}
+                {/* Bug check indicator */}
                 <div className={clsx(
-                  "alert p-5 rounded-2xl border flex flex-col gap-2",
+                  "p-5 rounded-2xl border flex items-start gap-3.5",
                   analysis.isCorrect
-                    ? "alert-ok bg-green-50 text-green-900 border-green-100 dark:bg-green-950/20 dark:text-green-300 dark:border-green-900/30"
-                    : "alert-warn bg-amber-50 text-amber-900 border-amber-100 dark:bg-amber-950/20 dark:text-amber-300 dark:border-amber-900/30"
+                    ? "bg-emerald-50 border-emerald-100 text-emerald-950 dark:bg-emerald-950/25 dark:border-emerald-900/30 dark:text-emerald-350"
+                    : "bg-amber-50 border-amber-100 text-amber-950 dark:bg-amber-950/25 dark:border-amber-900/30 dark:text-amber-350"
                 )}>
-                  <strong className="text-base font-bold flex items-center gap-2">
-                    <span className="text-lg">{analysis.isCorrect ? "✓" : "⚠"}</span>
-                    {analysis.isCorrect ? "Code looks correct" : "Issues found"}
-                  </strong>
-                  <p className="text-sm leading-relaxed">
-                    {analysis.isCorrect
-                      ? analysis.explanation
-                      : (analysis.bugs ?? []).join(" • ")}
-                  </p>
+                  <div className="mt-0.5 flex-shrink-0">
+                    {analysis.isCorrect ? <Check className="w-5 h-5 text-emerald-500" /> : <AlertTriangle className="w-5 h-5 text-amber-500" />}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm sm:text-base">{analysis.isCorrect ? "Algorithm correctness verified" : "Issues / Bugs found"}</h3>
+                    <p className="text-xs sm:text-sm mt-1 leading-relaxed">
+                      {analysis.isCorrect ? analysis.explanation : (analysis.bugs ?? []).join(" • ")}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Corrected code */}
+                {/* Corrected Code pane */}
                 {!analysis.isCorrect && analysis.correctedCode && (
-                  <div className="card bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 rounded-2xl p-6 shadow-sm flex flex-col gap-3">
-                    <div className="card-head border-b border-slate-100 dark:border-zinc-800/60 pb-2"><span className="card-head__label font-bold text-slate-800 dark:text-white text-base">Corrected Code</span></div>
-                    <pre className="code-block w-full overflow-x-auto p-4 rounded-xl font-mono text-sm leading-relaxed bg-slate-50 dark:bg-zinc-950 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-850 shadow-inner">{analysis.correctedCode}</pre>
+                  <div className="glass-card rounded-2xl p-6 shadow-sm border border-zinc-200 dark:border-zinc-850 flex flex-col gap-3">
+                    <h3 className="font-bold text-zinc-800 dark:text-white text-base">Corrected Code Proposal</h3>
+                    <pre className="w-full overflow-x-auto p-4 rounded-xl font-mono text-xs sm:text-sm leading-relaxed bg-zinc-900 text-zinc-200 border border-zinc-800 shadow-inner">{analysis.correctedCode}</pre>
                   </div>
                 )}
 
-                {/* How it works */}
-                {analysis.howItWorks?.length > 0 && (
-                  <div className="card bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 rounded-2xl p-6 shadow-sm flex flex-col gap-4">
-                    <div className="card-head border-b border-slate-100 dark:border-zinc-800/60 pb-2"><span className="card-head__label font-bold text-slate-800 dark:text-white text-base">How it works</span></div>
-                    <ol className="steps-list flex flex-col gap-3">
-                      {analysis.howItWorks.map((s: string, i: number) => (
-                        <li key={i} className="steps-list__item flex items-start gap-3 text-sm leading-relaxed text-slate-600 dark:text-zinc-300">
-                          <span className="steps-list__num font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 rounded-full w-5 h-5 flex items-center justify-center text-[10px] mt-0.5 select-none">{i + 1}</span>
-                          <span className="steps-list__text flex-1">{s}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                )}
-
-                {/* ── VISUALIZATION ───────────────────────────── */}
+                {/* Step Visualizer */}
                 {steps.length > 0 && (
-                  <div className="card viz-card bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
-                    {/* Viz header bar */}
-                    <div className="viz-topbar flex items-center justify-between border-b border-slate-100 dark:border-zinc-800/60 pb-3">
-                      <span className="viz-topbar__title font-bold text-slate-800 dark:text-white text-base">Live Visualization</span>
-                      <span className="viz-topbar__counter text-xs font-mono font-semibold text-slate-400 dark:text-zinc-550">
-                        Step {stepIdx + 1} / {steps.length}
+                  <div className="glass-card rounded-2xl p-6 shadow-sm border border-zinc-200 dark:border-zinc-850 flex flex-col gap-5">
+                    
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-zinc-150 dark:border-zinc-850/60 pb-3">
+                      <h3 className="font-bold text-zinc-850 dark:text-white text-base">Interactive Visualization Canvas</h3>
+                      <span className="text-xs font-mono font-bold text-zinc-400 dark:text-zinc-550 select-none">
+                        Frame {stepIdx + 1} / {steps.length}
                       </span>
                     </div>
 
-                    {/* Keyboard hint */}
-                    <div className="kbd-row flex items-center gap-1 text-[11px] text-slate-400 dark:text-zinc-550 border border-slate-100 dark:border-zinc-800/60 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-zinc-950/20 w-fit select-none">
-                      <kbd className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm font-sans font-semibold">Space</kbd> play/pause &nbsp;·&nbsp;
-                      <kbd className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm font-sans font-semibold">←</kbd><kbd className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm font-sans font-semibold">→</kbd> step &nbsp;·&nbsp;
-                      <kbd className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm font-sans font-semibold">R</kbd> reset
+                    {/* Keyboard shortcuts banner */}
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-450 dark:text-zinc-550 border border-zinc-150 dark:border-zinc-800/60 px-3 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-950/20 w-fit select-none">
+                      <kbd className="px-1.5 py-0.5 rounded border border-zinc-250 dark:border-zinc-700 bg-white dark:bg-zinc-850 shadow-sm font-sans font-semibold">Space</kbd> play/pause &nbsp;·&nbsp;
+                      <kbd className="px-1.5 py-0.5 rounded border border-zinc-250 dark:border-zinc-700 bg-white dark:bg-zinc-850 shadow-sm font-sans font-semibold">←</kbd><kbd className="px-1.5 py-0.5 rounded border border-zinc-250 dark:border-zinc-700 bg-white dark:bg-zinc-850 shadow-sm font-sans font-semibold">→</kbd> frame step &nbsp;·&nbsp;
+                      <kbd className="px-1.5 py-0.5 rounded border border-zinc-250 dark:border-zinc-700 bg-white dark:bg-zinc-850 shadow-sm font-sans font-semibold">R</kbd> reset
                     </div>
 
-                    {/* Two-column body */}
-                    <div className="viz-grid grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Visualizer Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                      
+                      {/* Left: visualizer block */}
+                      <div className="flex flex-col gap-5 border border-zinc-200 dark:border-zinc-850 p-4 rounded-xl bg-zinc-50/50 dark:bg-zinc-950/10 h-full justify-between">
+                        <div className="space-y-4">
+                          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest select-none">Array State Representation</span>
+                          <ArrayViz step={cur} />
 
-                      {/* LEFT — array state */}
-                      <div className="viz-col viz-col--left flex flex-col gap-5 border border-slate-100 dark:border-zinc-800/40 p-4 rounded-xl bg-slate-50/50 dark:bg-zinc-950/10">
-                        <p className="section-label text-xs font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wide select-none">Array state</p>
-                        <ArrayViz step={cur} />
-
-                        {/* Legend */}
-                        <div className="legend flex flex-wrap items-center justify-center gap-x-4 gap-y-2 py-2 border-t border-b border-slate-100 dark:border-zinc-800/60 text-xs text-slate-500 dark:text-zinc-400 select-none">
-                          {([
-                            ["active",    "#dbeafe", "#3b82f6"],
-                            ["comparing", "#fef3c7", "#f59e0b"],
-                            ["done",      "#dcfce7", "#22c55e"],
-                            ["swapping",  "#ede9fe", "#8b5cf6"],
-                            ["skipped",   "#f1f5f9", "#cbd5e1"],
-                          ] as const).map(([l]) => (
-                            <div key={l} className="legend__item flex items-center gap-1.5">
-                              <span className={clsx("legend__dot w-3 h-3 rounded-full border", LEGEND_CLASSES[l].bg, LEGEND_CLASSES[l].border)} />
-                              <span className="legend__label capitalize">{l}</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Pointer cards */}
-                        {cur?.pointers && Object.keys(cur.pointers).length > 0 && (
-                          <div className="ptr-grid grid grid-cols-2 sm:grid-cols-3 gap-3" role="list" aria-label="Current pointers">
-                            {Object.entries(cur.pointers).map(([idx, name]: [string, string]) => (
-                              <div key={name} className="ptr-card p-3 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm flex flex-col gap-0.5 items-center select-none" role="listitem">
-                                <span className="ptr-card__name text-xs font-bold text-indigo-500">{name}</span>
-                                <span className="ptr-card__val text-[11px] font-mono text-slate-400 dark:text-zinc-550">idx = {idx}</span>
+                          {/* Connection / indexes legend */}
+                          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 py-3 border-t border-b border-zinc-100 dark:border-zinc-800/40 text-xs select-none">
+                            {Object.entries(LEGEND_CLASSES).map(([key, item]) => (
+                              <div key={key} className="flex items-center gap-1.5">
+                                <span className={clsx("w-3 h-3 rounded border", item.bg, item.border)} />
+                                <span className="text-zinc-500 dark:text-zinc-450 text-[11px] font-medium">{item.label}</span>
                               </div>
                             ))}
                           </div>
-                        )}
 
-                        {/* Step message */}
-                        <div className="step-msg bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 p-4 rounded-xl flex flex-col gap-1.5 shadow-sm" aria-live="polite">
-                          <p className="step-msg__head text-xs font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wide select-none">What is happening</p>
-                          <p className="step-msg__body text-sm text-slate-600 dark:text-zinc-200 leading-relaxed font-medium">{cur?.msg || "—"}</p>
+                          {/* Pointers detail */}
+                          {cur?.pointers && Object.keys(cur.pointers).length > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 py-1" role="list" aria-label="Variables tracker">
+                              {Object.entries(cur.pointers).map(([idx, name]) => (
+                                <div key={name} className="p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm flex flex-col items-center select-none" role="listitem">
+                                  <span className="text-xs font-bold text-indigo-500">{name}</span>
+                                  <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-550 mt-0.5">idx = {idx}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Visualizer text explainer */}
+                        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-850 bg-white dark:bg-zinc-900 shadow-inner flex flex-col gap-1.5" aria-live="polite">
+                          <div className="flex items-center gap-1 text-indigo-500">
+                            <Info className="w-3.5 h-3.5" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider select-none">What is happening</span>
+                          </div>
+                          <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-200 font-medium leading-relaxed">
+                            {cur?.msg || "Visualizer loaded. Click Play to start."}
+                          </p>
                         </div>
                       </div>
 
-                      {/* RIGHT — code panel */}
-                      <div className="viz-col viz-col--right">
-                        <p className="section-label text-xs font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wide mb-3 select-none">Code — active line highlighted</p>
-                        <CodePanel
-                          lines={analysis.codeLines}
-                          activeLine={cur?.activeLine ?? -1}
-                        />
+                      {/* Right: code block */}
+                      <div className="flex flex-col gap-3">
+                        <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest select-none">Active Code Line Tracker</span>
+                        <CodePanel lines={analysis.codeLines} activeLine={cur?.activeLine ?? -1} />
                       </div>
                     </div>
 
-                    {/* Playback controls */}
-                    <div className="playback flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-zinc-950/30 p-4 rounded-xl border border-slate-200 dark:border-zinc-850" role="toolbar" aria-label="Playback controls">
+                    {/* Playback Controls Toolbar */}
+                    <div className="flex flex-wrap items-center gap-4 bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-xl border border-zinc-200 dark:border-zinc-850" role="toolbar" aria-label="Playback controls">
                       <button
                         onClick={handlePlay}
                         className={clsx(
-                          "btn font-semibold text-xs py-2 px-4 rounded-xl shadow-sm hover:shadow flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all select-none min-w-[6.5rem]",
-                          playing
-                            ? "btn-pause bg-amber-500 text-white hover:bg-amber-600"
-                            : "btn-play bg-indigo-600 text-white hover:bg-indigo-700"
+                          "font-bold text-xs py-2 px-5 rounded-xl shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all select-none min-w-[7.2rem] text-white",
+                          playing ? "bg-amber-500 hover:bg-amber-600 shadow-amber-500/15" : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-650/15"
                         )}
-                        title={playing ? "Pause (Space)" : "Play (Space)"}
+                        title={playing ? "Pause execution (Space)" : "Play execution (Space)"}
                         type="button"
                       >
-                        {playing ? "⏸ Pause" : "▶ Play"}
+                        {playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                        {playing ? "Pause" : "Play"}
                       </button>
 
-                      <button onClick={goBack}    disabled={stepIdx === 0}                 className="btn btn-ctrl border border-slate-200 text-slate-600 dark:border-zinc-800 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-850/50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-xs py-2 px-3.5 rounded-xl cursor-pointer active:scale-95 select-none" title="Step back (←)" type="button">‹ Back</button>
-                      <button onClick={goForward} disabled={stepIdx >= steps.length - 1}   className="btn btn-ctrl border border-slate-200 text-slate-600 dark:border-zinc-800 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-850/50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-xs py-2 px-3.5 rounded-xl cursor-pointer active:scale-95 select-none" title="Step forward (→)" type="button">Next ›</button>
-                      <button onClick={resetViz}                                            className="btn btn-ctrl border border-slate-200 text-slate-600 dark:border-zinc-800 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-850/50 font-semibold text-xs py-2 px-3.5 rounded-xl cursor-pointer active:scale-95 select-none" title="Reset (R)" type="button">↺ Reset</button>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={goBack} disabled={stepIdx === 0} className="border border-zinc-200 text-zinc-650 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed font-bold text-xs py-2 px-3.5 rounded-xl cursor-pointer active:scale-95 transition-all dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-850/50" title="Step back (←)" type="button">
+                          <ChevronLeft className="w-3.5 h-3.5" /> Back
+                        </button>
+                        <button onClick={goForward} disabled={stepIdx >= steps.length - 1} className="border border-zinc-200 text-zinc-650 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed font-bold text-xs py-2 px-3.5 rounded-xl cursor-pointer active:scale-95 transition-all dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-850/50" title="Step forward (→)" type="button">
+                          Next <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={resetViz} className="border border-zinc-200 text-zinc-650 hover:bg-zinc-100 font-bold text-xs py-2 px-3.5 rounded-xl cursor-pointer active:scale-95 transition-all dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-850/50" title="Reset (R)" type="button">
+                          <RotateCcw className="w-3.5 h-3.5" /> Reset
+                        </button>
+                      </div>
 
-                      {/* Seekable progress bar */}
+                      {/* Seek slider */}
                       <div
-                        className="progress flex-1 min-w-[10rem] h-2.5 rounded-full bg-slate-200 dark:bg-zinc-850 overflow-hidden cursor-pointer relative shadow-inner select-none"
+                        className="flex-1 min-w-[8rem] h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full cursor-pointer overflow-hidden relative shadow-inner select-none"
                         role="slider"
-                        aria-label="Step progress"
+                        aria-label="Progress slider"
                         aria-valuemin={1}
                         aria-valuemax={steps.length}
                         aria-valuenow={stepIdx + 1}
                         tabIndex={0}
                         onClick={seekTo}
-                        onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>): void => { if (e.key === "ArrowRight") goForward(); if (e.key === "ArrowLeft") goBack(); }}
-                        title="Click to seek"
+                        onKeyDown={(e) => { if (e.key === "ArrowRight") goForward(); if (e.key === "ArrowLeft") goBack(); }}
+                        title="Click or drag to seek steps"
                       >
                         <div
-                          className="progress__fill h-full bg-indigo-600 rounded-full transition-all duration-100"
+                          className="h-full bg-indigo-600 rounded-full transition-all duration-100 shadow"
                           style={{ width: `${((stepIdx + 1) / steps.length) * 100}%` }}
                         />
                       </div>
 
-                      {/* Speed slider */}
-                      <div className="speed flex items-center gap-2 select-none">
-                        <label className="speed__label text-xs font-semibold text-slate-400 dark:text-zinc-550 uppercase tracking-wider" htmlFor="speed-range">Speed</label>
+                      {/* Speed config */}
+                      <div className="flex items-center gap-2 select-none">
+                        <label className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wider" htmlFor="playback-speed">Speed</label>
                         <input
-                          id="speed-range"
+                          id="playback-speed"
                           type="range"
                           min="1" max="5" step="1"
                           value={speed}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>): void => setSpeed(Number(e.target.value))}
-                          aria-valuetext={SLABELS[speed - 1]}
-                          className="accent-indigo-600 w-24 h-1.5 rounded-lg appearance-none cursor-pointer bg-slate-200 dark:bg-zinc-850"
+                          onChange={(e) => setSpeed(Number(e.target.value))}
+                          className="accent-indigo-600 w-20 cursor-pointer h-1 rounded bg-zinc-200 dark:bg-zinc-800"
                         />
-                        <span className="speed__val text-xs font-bold text-slate-600 dark:text-zinc-300 w-12 text-right">{SLABELS[speed - 1]}</span>
+                        <span className="text-[11px] font-bold text-zinc-600 dark:text-zinc-450 w-14 text-right">{SLABELS[speed - 1]}</span>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* ── LINE-BY-LINE ─────────────────────────────── */}
+                {/* Line-by-line detailed description */}
                 {analysis.codeLines?.length > 0 && (
-                  <div className="card bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 rounded-2xl p-6 shadow-sm flex flex-col gap-4">
-                    <div className="card-head border-b border-slate-100 dark:border-zinc-800/60 pb-2"><span className="card-head__label font-bold text-slate-800 dark:text-white text-base">Line-by-line explanation</span></div>
+                  <div className="glass-card rounded-2xl p-6 shadow-sm border border-zinc-200 dark:border-zinc-850 flex flex-col gap-4">
+                    <div className="border-b border-zinc-150 dark:border-zinc-850/60 pb-3">
+                      <h3 className="font-bold text-zinc-850 dark:text-white text-base">Static Code Line Reference</h3>
+                    </div>
                     <div className="flex flex-col">
-                      {analysis.codeLines.map((item: CodeLine, i: number) => (
+                      {analysis.codeLines.map((item, idx) => (
                         <div
-                          key={i}
+                          key={idx}
                           className={clsx(
-                            "explain-row py-3 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 font-mono text-sm border-slate-100 dark:border-zinc-850",
-                            i < analysis.codeLines.length - 1 ? "border-b" : "border-0"
+                            "py-3.5 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 font-mono text-xs sm:text-sm border-zinc-100 dark:border-zinc-900",
+                            idx < analysis.codeLines.length - 1 ? "border-b" : "border-0"
                           )}
                         >
-                          <span className="explain-row__num text-xs text-slate-300 dark:text-zinc-650 w-5 text-right select-none">{i + 1}</span>
-                          <code className="explain-row__code font-bold text-slate-800 dark:text-zinc-200 flex-1 whitespace-pre-wrap">{item.line}</code>
-                          <span className="explain-row__text text-xs text-slate-500 dark:text-zinc-400 font-sans flex-1 bg-slate-50 dark:bg-zinc-950/30 px-3 py-1 rounded-lg border border-slate-100 dark:border-zinc-850/50">{item.explain}</span>
+                          <span className="text-zinc-350 dark:text-zinc-650 w-6 text-right select-none" aria-hidden="true">{idx + 1}</span>
+                          <code className="font-semibold text-zinc-850 dark:text-zinc-250 flex-1 whitespace-pre-wrap">{item.line}</code>
+                          <span className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-405 font-sans flex-1 bg-zinc-50 dark:bg-zinc-950/20 px-3.5 py-1.5 rounded-xl border border-zinc-150/40 dark:border-zinc-850/40">
+                            {item.explain}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -900,24 +881,25 @@ export default function App(): React.ReactElement {
           </div>
         )}
 
-        {/* ── EMPTY STATE ─────────────────────────────────────── */}
+        {/* ── DEFAULT EMPTY STATE ────────────────────────────────── */}
         {phase === "idle" && !analysis && (
-          <div className="empty flex flex-col items-center justify-center text-center p-12 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 rounded-2xl shadow-sm gap-4" aria-label="Get started">
-            <div className="empty__icon text-4xl text-indigo-500 font-mono select-none">{"</>"}</div>
-            <p className="empty__title text-lg font-bold text-slate-800 dark:text-white">Paste any DSA algorithm above</p>
-            <p className="empty__body text-sm text-slate-400 dark:text-zinc-400 max-w-md leading-relaxed">
-              Pick a demo or paste your own code. The AI will detect bugs, explain
-              every line, and animate each step so you can follow along at your own pace.
+          <div className="flex flex-col items-center justify-center text-center p-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-850 rounded-2xl shadow-sm gap-4" aria-label="Editor empty state panel">
+            <div className="text-5xl font-mono text-indigo-500 select-none">{"{...}"}</div>
+            <h2 className="text-lg font-bold text-zinc-800 dark:text-white">Workspace Empty</h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-455 max-w-lg leading-relaxed font-sans">
+              Pick a sorting or searching demo above or write your own custom code. Click the 'Run Visualization' button to generate pointer frame tables and complexity analytics instantly.
             </p>
           </div>
         )}
 
         {/* ── FOOTER ──────────────────────────────────────────── */}
-        <footer className="footer flex items-center justify-between border-t border-slate-200 dark:border-zinc-800 pt-5 text-xs text-slate-400 dark:text-zinc-550 select-none">
-          <span>Powered by{" "}
-            <a href="https://groq.com" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-500 transition-colors font-medium">Groq</a>
+        <footer className="flex items-center justify-between border-t border-zinc-250/60 dark:border-zinc-850/60 pt-5 text-xs text-zinc-400 dark:text-zinc-550 select-none">
+          <span>
+            Powered by <a href="https://groq.com" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-500 transition-colors font-medium">Groq completions</a>
           </span>
-          <span>Model: <code className="font-mono bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 px-1.5 py-0.5 rounded text-[10px]">{model}</code></span>
+          <span className="font-mono bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 border border-zinc-200 dark:border-zinc-800 rounded text-[10px]">
+            {model}
+          </span>
         </footer>
 
       </div>
