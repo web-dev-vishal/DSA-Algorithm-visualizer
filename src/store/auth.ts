@@ -63,6 +63,19 @@ export const authStore = {
     notify(null);
   },
 
+  updateUser(updates: Partial<User>): User | null {
+    try {
+      const current = this.getUser();
+      if (!current) return null;
+      const updated = { ...current, ...updates };
+      localStorage.setItem(KEY, JSON.stringify(updated));
+      notify(updated);
+      return updated;
+    } catch {
+      return null;
+    }
+  },
+
   subscribe(fn: AuthListener): () => void {
     listeners.add(fn);
     return () => listeners.delete(fn);

@@ -25,7 +25,34 @@ export function SettingsPage({ defaultTab = "profile" }: { defaultTab?: string }
   }, [defaultTab]);
 
   const [deleteModal, setDeleteModal] = useState(false);
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+
+  const [name, setName] = useState(user?.name ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name ?? "");
+      setEmail(user.email ?? "");
+    }
+  }, [user]);
+
+  function handleSaveChanges() {
+    if (name.trim()) {
+      updateUser({
+        name,
+        email,
+        avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(name.replace(/\s+/g, ""))}`
+      });
+    }
+  }
+
+  function handleChangePhoto() {
+    const url = prompt("Enter new profile photo URL:", user?.avatar ?? "");
+    if (url !== null) {
+      updateUser({ avatar: url });
+    }
+  }
 
   const containerVariants = {
     hidden: {},
@@ -104,20 +131,20 @@ export function SettingsPage({ defaultTab = "profile" }: { defaultTab?: string }
                 <div className="flex items-center gap-5">
                   <div className="relative group">
                     <Avatar src={user?.avatar} name={user?.name ?? ""} size="xl" className="border-2 border-indigo-400/20 shadow-md shadow-indigo-550/5" />
-                    <button className="absolute -bottom-1 -right-1 w-7 h-7 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-90" title="Upload new photo">
+                    <button className="absolute -bottom-1 -right-1 w-7 h-7 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-90" title="Upload new photo" onClick={handleChangePhoto}>
                       <Camera className="w-3.5 h-3.5" />
                     </button>
                   </div>
                   <div>
                     <p className="text-base font-extrabold text-zinc-900 dark:text-white leading-tight">{user?.name}</p>
                     <p className="text-xs text-zinc-450 dark:text-zinc-500 font-semibold mt-1">{user?.email}</p>
-                    <Button variant="ghost" size="sm" className="mt-2.5 -ml-2 text-xs font-bold text-indigo-500 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-950/20">Change Photo</Button>
+                    <Button variant="ghost" size="sm" className="mt-2.5 -ml-2 text-xs font-bold text-indigo-500 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-950/20" onClick={handleChangePhoto}>Change Photo</Button>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input label="Full Name" defaultValue={user?.name} className="shadow-sm" />
-                  <Input label="Email Address" type="email" defaultValue={user?.email} className="shadow-sm" />
+                  <Input label="Full Name" value={name} onChange={e => setName(e.target.value)} className="shadow-sm" />
+                  <Input label="Email Address" type="email" value={email} onChange={e => setEmail(e.target.value)} className="shadow-sm" />
                   <Input label="Organization" placeholder="e.g. Acme Inc." className="shadow-sm" />
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-zinc-500 dark:text-zinc-405 uppercase tracking-wider select-none">Preferred Timezone</label>
@@ -129,7 +156,7 @@ export function SettingsPage({ defaultTab = "profile" }: { defaultTab?: string }
                     </select>
                   </div>
                 </div>
-                <Button variant="primary" size="sm" className="text-xs font-bold shadow-sm">Save Changes</Button>
+                <Button variant="primary" size="sm" className="text-xs font-bold shadow-sm" onClick={handleSaveChanges}>Save Changes</Button>
               </CardBody>
             </Card>
 

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { clsx } from "clsx";
 
 interface AvatarProps {
@@ -28,12 +29,18 @@ function stringToColor(str: string): string {
 
 export function Avatar({ src, name = "", size = "md", className }: AvatarProps) {
   const sizes = { xs: "w-5 h-5 text-[9px]", sm: "w-7 h-7 text-xs", md: "w-9 h-9 text-sm", lg: "w-11 h-11 text-base", xl: "w-14 h-14 text-lg" };
+  const [error, setError] = useState(false);
 
-  if (src) {
+  useEffect(() => {
+    setError(false);
+  }, [src]);
+
+  if (src && !error) {
     return (
       <img
         src={src}
         alt={name}
+        onError={() => setError(true)}
         className={clsx("rounded-full object-cover flex-shrink-0", sizes[size], className)}
       />
     );

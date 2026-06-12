@@ -32,5 +32,9 @@ export function useAuth() {
     authStore.logout();
   }
 
-  return { user, loading, login, signup, logout, isAuthenticated: !!user };
+  function updateUser(updates: Partial<User>) {
+    authStore.updateUser(updates);
+  }
+
+  return { user, loading, login, signup, logout, updateUser, isAuthenticated: !!user };
 }
