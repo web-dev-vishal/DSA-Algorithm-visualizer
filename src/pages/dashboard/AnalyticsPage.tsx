@@ -101,7 +101,7 @@ export function AnalyticsPage() {
         <Card className="p-5 glass-card border-zinc-200/60 dark:border-zinc-850/60 shadow-sm">
           <h2 className="font-extrabold text-zinc-850 dark:text-white text-sm tracking-tight uppercase select-none mb-5">Analyses Trend line</h2>
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={MONTHLY} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+            <AreaChart data={MONTHLY} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id="grad30" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.25} />
@@ -135,7 +135,7 @@ export function AnalyticsPage() {
         <Card className="lg:col-span-2 p-5 glass-card border-zinc-200/60 dark:border-zinc-850/60 shadow-sm">
           <h2 className="font-extrabold text-zinc-850 dark:text-white text-sm tracking-tight uppercase select-none mb-5">Weekly API vs Analysis Execution</h2>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={WEEKLY} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+            <BarChart data={WEEKLY} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-zinc-200 dark:text-zinc-850" />
               <XAxis dataKey="day" tick={{ fontSize: 10, fontWeight: 500 }} stroke="transparent" className="text-zinc-400" />
               <YAxis tick={{ fontSize: 10, fontWeight: 500 }} stroke="transparent" className="text-zinc-400" />
@@ -208,7 +208,7 @@ export function AnalyticsPage() {
         <Card className="p-5 glass-card border-zinc-200/60 dark:border-zinc-850/60 shadow-sm">
           <h2 className="font-extrabold text-zinc-850 dark:text-white text-sm tracking-tight uppercase select-none mb-4">User Activity Retention (WoW)</h2>
           <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={WEEKLY} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+            <LineChart data={WEEKLY} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-zinc-200 dark:text-zinc-850" />
               <XAxis dataKey="day" tick={{ fontSize: 10, fontWeight: 500 }} stroke="transparent" className="text-zinc-400" />
               <YAxis tick={{ fontSize: 10, fontWeight: 500 }} stroke="transparent" className="text-zinc-400" />

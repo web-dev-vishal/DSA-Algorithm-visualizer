@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Bell, Shield, Key, Trash2, Camera, AlertCircle, Laptop, Smartphone } from "lucide-react";
@@ -19,6 +19,11 @@ const TABS = [
 
 export function SettingsPage({ defaultTab = "profile" }: { defaultTab?: string }) {
   const [tab, setTab] = useState(defaultTab);
+
+  useEffect(() => {
+    setTab(defaultTab);
+  }, [defaultTab]);
+
   const [deleteModal, setDeleteModal] = useState(false);
   const { user } = useAuth();
 
