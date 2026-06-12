@@ -34,8 +34,6 @@
        Specifies a custom import mapping alias so that we can write absolute-like paths like `@/components/Button`
        instead of relative paths like `../../components/Button`.
     */
-    "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
     "paths": {
       "@/*": ["./src/*"]
     },
