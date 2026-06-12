@@ -15,8 +15,8 @@ const TABS = [
   { id: "api",           icon: Key,    label: "API Keys" },
 ];
 
-export function SettingsPage() {
-  const [tab, setTab] = useState("profile");
+export function SettingsPage({ defaultTab = "profile" }: { defaultTab?: string }) {
+  const [tab, setTab] = useState(defaultTab);
   const [deleteModal, setDeleteModal] = useState(false);
   const { user } = useAuth();
 

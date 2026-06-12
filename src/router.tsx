@@ -27,6 +27,9 @@ const OnboardingPage = lazy(() => import("./pages/onboarding/OnboardingPage").th
 
 // ── Dashboard pages ────────────────────────────────────────────────
 const DashboardHome  = lazy(() => import("./pages/dashboard/DashboardHome").then(m => ({ default: m.DashboardHome })));
+const AnalyticsPage  = lazy(() => import("./pages/dashboard/AnalyticsPage").then(m => ({ default: m.AnalyticsPage })));
+const HistoryPage    = lazy(() => import("./pages/dashboard/HistoryPage").then(m => ({ default: m.HistoryPage })));
+const APIPage        = lazy(() => import("./pages/dashboard/APIPage").then(m => ({ default: m.APIPage })));
 const BillingPage    = lazy(() => import("./pages/dashboard/BillingPage").then(m => ({ default: m.BillingPage })));
 const TeamPage       = lazy(() => import("./pages/dashboard/TeamPage").then(m => ({ default: m.TeamPage })));
 const SettingsPage   = lazy(() => import("./pages/dashboard/SettingsPage").then(m => ({ default: m.SettingsPage })));
@@ -167,22 +170,22 @@ export function AppRouter() {
         } />
         <Route path="/dashboard/analytics" element={
           <DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}>
-            <DashboardHome />
+            <AnalyticsPage />
           </DashboardWrapper>
         } />
         <Route path="/dashboard/history" element={
           <DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}>
-            <DashboardHome />
+            <HistoryPage />
           </DashboardWrapper>
         } />
         <Route path="/dashboard/api" element={
           <DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}>
-            <SettingsPage />
+            <APIPage />
           </DashboardWrapper>
         } />
         <Route path="/dashboard/security" element={
           <DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}>
-            <SettingsPage />
+            <SettingsPage defaultTab="security" />
           </DashboardWrapper>
         } />
 
