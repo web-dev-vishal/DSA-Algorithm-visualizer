@@ -5,7 +5,8 @@ import { clsx } from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Play, Pause, RotateCcw, ChevronLeft, ChevronRight, 
-  Code2, AlertTriangle, Check, Info, Terminal, ClipboardCheck
+  Code2, AlertTriangle, Check, Info, Terminal, ClipboardCheck,
+  Sun, Moon
 } from "lucide-react";
 
 /* ─── Groq config ─────────────────────────────────────────────────── */
@@ -352,6 +353,19 @@ const SPEEDS = [1500, 850, 480, 210, 75];
 const SLABELS = ["Slowest", "Slow", "Normal", "Fast", "Fastest"];
 
 export default function App() {
+  const [dark, setDark] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("algviz_dark");
+      if (stored !== null) return stored === "1";
+    } catch {}
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    localStorage.setItem("algviz_dark", dark ? "1" : "0");
+  }, [dark]);
+
   const [code, setCode] = useState(DEMOS.bubble?.code ?? "");
   const [activeDemo, setActiveDemo] = useState("bubble");
   const [model, setModel] = useState(DEFAULT_MODEL);
@@ -560,9 +574,19 @@ export default function App() {
               </h1>
             </div>
           </div>
-          <div className={clsx("badge border px-3 py-1 rounded-full text-xs font-semibold select-none flex items-center gap-1.5 shadow-sm", badge.shadow, badge.cls)}>
-            <span className="w-1.5 h-1.5 rounded-full bg-current" />
-            {badge.label}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setDark(d => !d)}
+              className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-650 dark:text-zinc-400 hover:bg-zinc-150 dark:hover:bg-zinc-800 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+              type="button"
+            >
+              {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <div className={clsx("badge border px-3 py-1 rounded-full text-xs font-semibold select-none flex items-center gap-1.5 shadow-sm", badge.shadow, badge.cls)}>
+              <span className="w-1.5 h-1.5 rounded-full bg-current" />
+              {badge.label}
+            </div>
           </div>
         </header>
 
@@ -599,16 +623,16 @@ export default function App() {
               value={code}
               onChange={(e) => { setCode(e.target.value); setActiveDemo(""); }}
               spellCheck={false}
-              className="w-full h-72 p-4 font-mono text-sm border border-zinc-250 dark:border-zinc-850 rounded-xl bg-zinc-900 text-zinc-100 placeholder-zinc-550 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-inner"
+              className="w-full h-72 p-4 font-mono text-sm border border-zinc-250 dark:border-zinc-850 rounded-xl bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-550 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-inner"
               placeholder="// Paste algorithms here..."
               aria-label="Code Editor Textarea"
             />
             <button
               onClick={copyCodeText}
-              className="absolute top-3 right-3 p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-350 transition-colors shadow"
+              className="absolute top-3 right-3 p-1.5 rounded-lg bg-zinc-150 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-650 dark:text-zinc-350 transition-colors shadow-sm"
               title="Copy to clipboard"
             >
-              {codeCopied ? <ClipboardCheck className="w-4 h-4 text-emerald-400 animate-pulse" /> : <Code2 className="w-4 h-4" />}
+              {codeCopied ? <ClipboardCheck className="w-4 h-4 text-emerald-450 dark:text-emerald-400 animate-pulse" /> : <Code2 className="w-4 h-4" />}
             </button>
           </div>
 
@@ -713,8 +737,8 @@ export default function App() {
                 {/* Corrected Code pane */}
                 {!analysis.isCorrect && analysis.correctedCode && (
                   <div className="glass-card rounded-2xl p-6 shadow-sm border border-zinc-200 dark:border-zinc-850 flex flex-col gap-3">
-                    <h3 className="font-bold text-zinc-800 dark:text-white text-base">Corrected Code Proposal</h3>
-                    <pre className="w-full overflow-x-auto p-4 rounded-xl font-mono text-xs sm:text-sm leading-relaxed bg-zinc-900 text-zinc-200 border border-zinc-800 shadow-inner">{analysis.correctedCode}</pre>
+                    <h3 className="font-bold text-zinc-850 dark:text-white text-base">Corrected Code Proposal</h3>
+                    <pre className="w-full overflow-x-auto p-4 rounded-xl font-mono text-xs sm:text-sm leading-relaxed bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 shadow-inner">{analysis.correctedCode}</pre>
                   </div>
                 )}
 

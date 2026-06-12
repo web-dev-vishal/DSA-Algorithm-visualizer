@@ -10,6 +10,7 @@ import { useAuth } from "./hooks/useAuth";
 const HomePage     = lazy(() => import("./pages/marketing/HomePage").then(m => ({ default: m.HomePage })));
 const PricingPage  = lazy(() => import("./pages/marketing/PricingPage").then(m => ({ default: m.PricingPage })));
 const FeaturesPage = lazy(() => import("./pages/marketing/FeaturesPage").then(m => ({ default: m.FeaturesPage })));
+const SolutionsPage = lazy(() => import("./pages/marketing/SolutionsPage").then(m => ({ default: m.SolutionsPage })));
 const AboutPage    = lazy(() => import("./pages/marketing/AboutPage").then(m => ({ default: m.AboutPage })));
 const ContactPage  = lazy(() => import("./pages/marketing/ContactPage").then(m => ({ default: m.ContactPage })));
 const BlogPage     = lazy(() => import("./pages/marketing/BlogPage").then(m => ({ default: m.BlogPage })));
@@ -120,7 +121,7 @@ export function AppRouter() {
         <Route path="/terms"    element={<MarketingLayout><TermsPage /></MarketingLayout>} />
         <Route path="/cookies"  element={<MarketingLayout><PrivacyPage /></MarketingLayout>} />
         <Route path="/security" element={<MarketingLayout><FeaturesPage /></MarketingLayout>} />
-        <Route path="/solutions" element={<MarketingLayout><FeaturesPage /></MarketingLayout>} />
+        <Route path="/solutions" element={<MarketingLayout><SolutionsPage /></MarketingLayout>} />
         <Route path="/integrations" element={<MarketingLayout><FeaturesPage /></MarketingLayout>} />
         <Route path="/careers"  element={<MarketingLayout><AboutPage /></MarketingLayout>} />
         <Route path="/partners" element={<MarketingLayout><AboutPage /></MarketingLayout>} />
