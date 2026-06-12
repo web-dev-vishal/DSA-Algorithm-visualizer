@@ -102,6 +102,14 @@ export function AppRouter() {
     localStorage.setItem("algviz_dark", darkMode ? "1" : "0");
   }, [darkMode]);
 
+  useEffect(() => {
+    const handleSync = () => {
+      setDarkMode(getInitialDark());
+    };
+    window.addEventListener("storage", handleSync);
+    return () => window.removeEventListener("storage", handleSync);
+  }, []);
+
   function toggleDark() { setDarkMode(d => !d); }
 
   return (

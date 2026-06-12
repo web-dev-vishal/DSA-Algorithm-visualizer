@@ -366,6 +366,17 @@ export default function App() {
     localStorage.setItem("algviz_dark", dark ? "1" : "0");
   }, [dark]);
 
+  useEffect(() => {
+    const handleSync = () => {
+      try {
+        const stored = localStorage.getItem("algviz_dark");
+        if (stored !== null) setDark(stored === "1");
+      } catch {}
+    };
+    window.addEventListener("storage", handleSync);
+    return () => window.removeEventListener("storage", handleSync);
+  }, []);
+
   const [code, setCode] = useState(DEMOS.bubble?.code ?? "");
   const [activeDemo, setActiveDemo] = useState("bubble");
   const [model, setModel] = useState(DEFAULT_MODEL);

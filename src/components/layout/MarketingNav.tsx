@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { clsx } from "clsx";
-import { Menu, X, Zap, ChevronDown } from "lucide-react";
+import { Menu, X, Zap, ChevronDown, Sun, Moon } from "lucide-react";
 import { Button } from "../ui/Button";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -23,6 +23,31 @@ const NAV_LINKS = [
 ];
 
 export function MarketingNav() {
+  const [dark, setDark] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("algviz_dark");
+      if (stored !== null) return stored === "1";
+    } catch {}
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    localStorage.setItem("algviz_dark", dark ? "1" : "0");
+    window.dispatchEvent(new Event("storage"));
+  }, [dark]);
+
+  useEffect(() => {
+    const handleSync = () => {
+      try {
+        const stored = localStorage.getItem("algviz_dark");
+        if (stored !== null) setDark(stored === "1");
+      } catch {}
+    };
+    window.addEventListener("storage", handleSync);
+    return () => window.removeEventListener("storage", handleSync);
+  }, []);
+
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdown, setDropdown] = useState<string | null>(null);
@@ -111,6 +136,15 @@ export function MarketingNav() {
 
         {/* CTA */}
         <div className="hidden md:flex items-center gap-2">
+          <button
+            onClick={() => setDark(d => !d)}
+            className="p-2 mr-2 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-650 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-850 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+            aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+            type="button"
+          >
+            {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+          
           {user ? (
             <Link to="/dashboard">
               <Button variant="primary" size="sm">Go to Dashboard</Button>
@@ -127,15 +161,25 @@ export function MarketingNav() {
           )}
         </div>
 
-        {/* Mobile toggle */}
-        <button
-          className="md:hidden p-2 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-          onClick={() => setMobileOpen(o => !o)}
-          aria-label={mobileOpen ? "Close menu" : "Open menu"}
-          aria-expanded={mobileOpen}
-        >
-          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        {/* Mobile theme and menu toggle */}
+        <div className="flex items-center gap-2 md:hidden">
+          <button
+            onClick={() => setDark(d => !d)}
+            className="p-2 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-650 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-850 transition-colors cursor-pointer"
+            aria-label="Toggle theme"
+            type="button"
+          >
+            {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+          <button
+            className="p-2 rounded-lg text-zinc-650 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            onClick={() => setMobileOpen(o => !o)}
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+          >
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </nav>
 
       {/* Mobile menu */}
