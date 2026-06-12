@@ -49,7 +49,7 @@ export function OnboardingPage() {
   const [selections, setSelections] = useState<Record<string, string | string[]>>({});
   const navigate = useNavigate();
 
-  const current = STEPS[step];
+  const current = STEPS[step]!;
   const isMulti = current.multi;
 
   function select(val: string) {

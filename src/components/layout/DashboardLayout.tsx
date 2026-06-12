@@ -40,15 +40,16 @@ export function DashboardLayout({ children, darkMode, onToggleDark }: DashboardL
     navigate("/");
   }
 
-  const PLAN_BADGE: Record<string, { label: string; variant: "primary" | "success" | "warning" | "default" }> = {
-    free:       { label: "Free",       variant: "default" },
-    starter:    { label: "Starter",    variant: "primary" },
-    pro:        { label: "Pro",        variant: "success" },
-    business:   { label: "Business",   variant: "warning" },
-    enterprise: { label: "Enterprise", variant: "warning" },
+  const freeBadge = { label: "Free", variant: "default" as const };
+  const PLAN_BADGE = {
+    free:       freeBadge,
+    starter:    { label: "Starter",    variant: "primary" as const },
+    pro:        { label: "Pro",        variant: "success" as const },
+    business:   { label: "Business",   variant: "warning" as const },
+    enterprise: { label: "Enterprise", variant: "warning" as const },
   };
 
-  const planInfo = user ? (PLAN_BADGE[user.plan] ?? PLAN_BADGE.free) : PLAN_BADGE.free;
+  const planInfo = user ? (PLAN_BADGE[user.plan as keyof typeof PLAN_BADGE] ?? freeBadge) : freeBadge;
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
     <aside className={clsx(

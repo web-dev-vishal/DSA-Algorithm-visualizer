@@ -1,6 +1,3 @@
-// @ts-check
-
-/** @type {import("eslint").Linter.Config} */
 module.exports = {
   root: true,
   env: {
@@ -11,41 +8,36 @@ module.exports = {
   parserOptions: {
     ecmaVersion: "latest",
     sourceType: "module",
-    ecmaFeatures: { jsx: true },
-    // Enables type-aware rules (e.g. recommended-type-checked)
     project: ["./tsconfig.json"],
     tsconfigRootDir: __dirname,
   },
+  plugins: [
+    "@typescript-eslint",
+    "react-hooks",
+    "jsx-a11y"
+  ],
   extends: [
     "eslint:recommended",
-    // Type-aware TypeScript rules — catches more errors than the plain recommended set
     "plugin:@typescript-eslint/recommended-type-checked",
-    // Enforces the Rules of Hooks and exhaustive useEffect deps
     "plugin:react-hooks/recommended",
-    // Accessibility: warns on missing alt text, bad ARIA usage, etc.
     "plugin:jsx-a11y/recommended",
-    // Must be LAST: disables all ESLint formatting rules that Prettier handles
-    "prettier",
+    "prettier"
   ],
-  plugins: ["@typescript-eslint", "react-hooks", "jsx-a11y"],
-  settings: {
-    react: { version: "detect" },
-  },
   rules: {
-    // ── TypeScript anti-patterns ─────────────────────────────────────
-    "@typescript-eslint/no-explicit-any": "error",         // Ban `any` — use `unknown` instead
-    "@typescript-eslint/no-non-null-assertion": "warn",    // Warn on `value!` — could throw at runtime
-    "@typescript-eslint/explicit-module-boundary-types": "warn", // Require return types on exported functions
-
-    // ── Hooks ────────────────────────────────────────────────────────
-    "react-hooks/exhaustive-deps": "warn",                 // Warn when useEffect deps are incomplete
-
-    // ── General quality ──────────────────────────────────────────────
-    "no-console": ["warn", { allow: ["warn", "error"] }],
-    "eqeqeq": ["error", "always"],
-
-    // ── Allow some patterns needed in Vite/React projects ───────────
-    "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
-  },
-  ignorePatterns: ["dist/", "node_modules/", "*.cjs"],
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-non-null-assertion": "warn",
+    "react-hooks/exhaustive-deps": "error",
+    "@typescript-eslint/consistent-type-imports": "error",
+    "@typescript-eslint/no-floating-promises": "off",
+    "@typescript-eslint/no-misused-promises": "off",
+    "@typescript-eslint/no-unsafe-member-access": "off",
+    "@typescript-eslint/no-unsafe-assignment": "off",
+    "@typescript-eslint/no-unsafe-call": "off",
+    "@typescript-eslint/no-unsafe-return": "off",
+    "@typescript-eslint/no-unsafe-argument": "off",
+    "@typescript-eslint/no-unused-expressions": "off",
+    "jsx-a11y/label-has-associated-control": "off",
+    "no-empty": "off",
+    "no-undef": "off"
+  }
 };

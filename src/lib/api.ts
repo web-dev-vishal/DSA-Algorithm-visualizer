@@ -5,7 +5,7 @@
  * No `any` — every shape is explicitly typed.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 // ── Environment ────────────────────────────────────────────────────
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -106,41 +106,108 @@ export interface AlgorithmAnalysis {
   steps: VisualizationStep[];
 }
 
+// ── New structures requested in Prompt 3 ───────────────────────────
+
+export type AlgorithmCategory = "sorting" | "searching" | "graph" | "tree" | "dp" | "twoPointers" | "slidingWindow";
+
+export type Language = "cpp" | "java" | "python" | "javascript" | "typescript" | "go";
+
+export interface ExecutionStep {
+  arrayState: number[];
+  leftIdx: number | null;
+  rightIdx: number | null;
+  activeLine: number;
+  description: string;
+  status: "active" | "comparing" | "done" | "swapping" | "skipped";
+}
+
+export interface LineExplanation {
+  line: number;
+  code: string;
+  explanation: string;
+}
+
+export interface AnalysisResult {
+  algorithm: string;
+  category: AlgorithmCategory;
+  timeComplexity: string;
+  spaceComplexity: string;
+  isCorrect: boolean;
+  summary: string;
+  steps: ExecutionStep[];
+  lineExplanations: LineExplanation[];
+}
+
+/** Typed custom API Error class */
+export class ApiError extends Error {
+  status: number;
+  info?: unknown;
+  constructor(message: string, status: number, info?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.info = info;
+  }
+}
+
 // ── Generic fetch helper ───────────────────────────────────────────
 
 /**
  * A generic fetch wrapper that returns `Promise<T>`.
- * Throws a typed Error on non-2xx responses so callers can catch
- * specific messages without touching `any`.
+ * Throws a typed ApiError on non-2xx responses.
+ * Backwards compatible with legacy options.
  */
 export async function fetchApi<T>(
   url: string,
-  { apiKey, body, ...rest }: FetchApiOptions,
+  options?: Omit<RequestInit, "body"> & { apiKey?: string; body?: unknown }
 ): Promise<T> {
-  const response = await fetch(url, {
-    ...rest,
-    method: rest.method ?? (body ? "POST" : "GET"),
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      ...rest.headers,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const standardOptions: RequestInit = {};
 
-  if (!response.ok) {
-    const errBody = (await response.json().catch(() => ({}))) as GroqErrorBody;
-    const msg = errBody.error?.message ?? "";
-
-    if (response.status === 401) throw new Error("Invalid API key. Check your .env file.");
-    if (response.status === 429) throw new Error("Rate limit hit. Wait a moment and try again.");
-    if (response.status === 400 && msg.includes("model")) {
-      throw new Error(`Model is not available on your Groq plan. Try a different model.`);
+  if (options) {
+    const { apiKey, body, ...rest } = options;
+    standardOptions.method = rest.method ?? (body ? "POST" : "GET");
+    const headers = new Headers(rest.headers);
+    if (apiKey) {
+      headers.set("Authorization", `Bearer ${apiKey}`);
     }
-    throw new Error(msg || `Groq API error ${response.status}`);
+    if (body) {
+      if (typeof body === "string") {
+        standardOptions.body = body;
+      } else {
+        headers.set("Content-Type", "application/json");
+        standardOptions.body = JSON.stringify(body);
+      }
+    }
+    standardOptions.headers = headers;
+    Object.assign(standardOptions, rest);
   }
 
-  return response.json() as Promise<T>;
+  try {
+    const response = await fetch(url, standardOptions);
+    if (!response.ok) {
+      let info: unknown;
+      try {
+        info = await response.json();
+      } catch {
+        info = null;
+      }
+      const errBody = info as GroqErrorBody | undefined;
+      const msg = errBody?.error?.message ?? "";
+
+      if (response.status === 401) throw new ApiError("Invalid API key. Check your .env file.", 401, info);
+      if (response.status === 429) throw new ApiError("Rate limit hit. Wait a moment and try again.", 429, info);
+      if (response.status === 400 && msg.includes("model")) {
+        throw new ApiError("Model is not available on your Groq plan. Try a different model.", 400, info);
+      }
+      throw new ApiError(msg || `API error ${response.status}`, response.status, info);
+    }
+    return (await response.json()) as T;
+  } catch (err: unknown) {
+    if (err instanceof ApiError) {
+      throw err;
+    }
+    throw new ApiError(err instanceof Error ? err.message : "Network error", 500);
+  }
 }
 
 // ── Convenience: call Groq and parse algorithm JSON ───────────────
@@ -191,7 +258,24 @@ export async function analyzeAlgorithm(
   return parsed;
 }
 
-// ── useApi hook ───────────────────────────────────────────────────
+// ── analyzeCode function ───────────────────────────────────────────
+
+export async function analyzeCode(
+  code: string,
+  language: Language,
+  array?: number[]
+): Promise<AnalysisResult> {
+  return fetchApi<AnalysisResult>("/api/analyze", {
+    method: "POST",
+    body: {
+      code,
+      language,
+      array,
+    },
+  });
+}
+
+// ── useApi hook (legacy) ───────────────────────────────────────────
 
 export interface UseApiState<T> {
   data: T | null;
@@ -199,10 +283,6 @@ export interface UseApiState<T> {
   error: string;
 }
 
-/**
- * Generic hook that wraps an async function with loading / error / data state.
- * `T` is the resolved value type; `A` is the tuple of argument types for `fn`.
- */
 export function useApi<T, A extends unknown[]>(
   fn: (...args: A) => Promise<T>,
 ): { data: T | null; loading: boolean; error: string; execute: (...args: A) => Promise<void>; reset: () => void } {
@@ -231,4 +311,46 @@ export function useApi<T, A extends unknown[]>(
   }, []);
 
   return { ...state, execute, reset };
+}
+
+// ── useFetch custom hook ───────────────────────────────────────────
+
+export function useFetch<T>(
+  url: string,
+  options?: RequestInit
+): { data: T | null; loading: boolean; error: string | null } {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) {
+        setLoading(true);
+        setError(null);
+      }
+    }).catch(() => {});
+
+    fetchApi<T>(url, options)
+      .then((res: T) => {
+        if (active) {
+          setData(res);
+          setLoading(false);
+        }
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          const msg = err instanceof Error ? err.message : "Unknown error";
+          setError(msg);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [url, options]);
+
+  return { data, loading, error };
 }

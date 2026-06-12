@@ -79,7 +79,8 @@ const POSTS = [
 ];
 
 export function BlogPage() {
-  const [featured, ...rest] = POSTS;
+  const featured = POSTS[0]!;
+  const rest = POSTS.slice(1);
 
   return (
     <div className="bg-white dark:bg-zinc-950 pt-24">

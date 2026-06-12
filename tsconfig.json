@@ -1,22 +1,67 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "jsx": "react-jsx",
+    /* (1) "strict": true
+       Enables strict type checking. It enables the following sub-flags:
+       - noImplicitAny: Error on expressions and declarations with an implied 'any' type.
+       - strictNullChecks: Null/undefined are not assignable to other types except themselves.
+       - strictFunctionTypes: Check function parameter compatibility strictly.
+       - strictBindCallApply: Validate arguments to bind, call, and apply strictly.
+       - strictPropertyInitialization: Error on properties declared but not set in constructors.
+       - noImplicitThis: Error on 'this' expressions with an implied 'any' type.
+       - useUnknownInCatchVariables: Type catch clause variables as 'unknown' rather than 'any'.
+    */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
+
+    /* (2) "moduleResolution": "bundler"
+       Resolves modules using the modern bundler strategies matching how tools like Vite package files,
+       supporting features like package entry points exports, rather than legacy Node resolution.
+    */
+    "moduleResolution": "bundler",
+
+    /* (3) "jsx": "react-jsx"
+       Compiles JSX directly to React's JSX runtime function calls (_jsx), which avoids the need to
+       import React from 'react' explicitly in every component file.
+    */
+    "jsx": "react-jsx",
+
+    /* (4) "noUncheckedIndexedAccess": true
+       Adds 'undefined' to the type of values lookup from an index signature (e.g. array[index] or obj[key]),
+       preventing runtime 'Cannot read properties of undefined' crashes when accessing missing indexes.
+    */
+    "noUncheckedIndexedAccess": true,
+
+    /* (5) "paths": { "@/*": ["./src/*"] } and "baseUrl"
+       Specifies a custom import mapping alias so that we can write absolute-like paths like `@/components/Button`
+       instead of relative paths like `../../components/Button`.
+    */
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
+    /* (6) "incremental": true and "tsBuildInfoFile"
+       Enables incremental compilation by saving caching information about project graphs in a tsbuildinfo file,
+       greatly speeding up subsequent typecheck and builds.
+    */
+    "incremental": true,
+    "tsBuildInfoFile": "./tsconfig.tsbuildinfo",
+
+    /* (7) "lib": ["ES2022", "DOM", "DOM.Iterable"]
+       Declares target library files that describe language and environment features, here enabling modern
+       ECMAScript 2022 features along with standard browser DOM APIs.
+    */
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+
+    /* Other standard options for Vite + React projects */
+    "target": "ES2022",
+    "module": "ESNext",
+    "useDefineForClassFields": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "allowImportingTsExtensions": true,
     "noEmit": true,
-    "incremental": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "esModuleInterop": true
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

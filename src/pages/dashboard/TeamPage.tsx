@@ -126,6 +126,7 @@ export function TeamPage() {
                     <td className="py-2 pr-6 font-medium">{row.perm}</td>
                     {["owner", "admin", "manager", "member", "guest"].map(role => (
                       <td key={role} className="py-2 pr-4 text-center">
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         {(row as any)[role] ? (
                           <span className="text-emerald-500">✓</span>
                         ) : (

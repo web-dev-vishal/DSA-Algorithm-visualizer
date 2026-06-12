@@ -19,7 +19,7 @@ export function BillingPage() {
   const { user } = useAuth();
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [cancelModal, setCancelModal] = useState(false);
-  const currentPlan = PLANS.find(p => p.id === user?.plan) ?? PLANS[0];
+  const currentPlan = PLANS.find(p => p.id === user?.plan) ?? PLANS[0]!;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

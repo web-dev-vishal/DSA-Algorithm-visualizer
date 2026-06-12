@@ -424,6 +424,38 @@
   .complexity-chip--good     { background: rgba(16,185,129,0.1); color: #065f46; }
   .complexity-chip--moderate { background: rgba(245,158,11,0.1); color: #92400e; }
   .complexity-chip--poor     { background: rgba(244,63,94,0.1);  color: #9f1239; }
+
+  /* ── Brand buttons ─────────────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 font-semibold rounded-[10px] border border-transparent transition-all duration-150 select-none whitespace-nowrap bg-indigo-600 text-white shadow hover:bg-indigo-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 font-semibold rounded-[10px] border border-transparent transition-all duration-150 select-none whitespace-nowrap bg-transparent text-slate-600 hover:bg-slate-100 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-slate-500 dark:text-zinc-400 dark:hover:bg-zinc-800;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 font-semibold rounded-[10px] border border-transparent transition-all duration-150 select-none whitespace-nowrap bg-rose-500 text-white shadow hover:bg-rose-600 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2;
+  }
+
+  /* ── Code Panel ────────────────────────────────────────────── */
+  .code-panel {
+    @apply flex flex-col rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/30 overflow-hidden shadow-inner;
+  }
+
+  /* ── Step Card ─────────────────────────────────────────────── */
+  .step-card {
+    @apply p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm transition-all hover:shadow hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-500;
+  }
+
+  /* ── Callout Panels ────────────────────────────────────────── */
+  .callout-info {
+    @apply p-4 rounded-xl border border-blue-100 bg-blue-50/50 text-blue-900 dark:border-blue-900/30 dark:bg-blue-950/20 dark:text-blue-300 shadow-sm hover:shadow transition-shadow focus:outline-none focus:ring-2 focus:ring-blue-500;
+  }
+  .callout-success {
+    @apply p-4 rounded-xl border border-green-100 bg-green-50/50 text-green-900 dark:border-green-900/30 dark:bg-green-950/20 dark:text-green-300 shadow-sm hover:shadow transition-shadow focus:outline-none focus:ring-2 focus:ring-green-500;
+  }
+  .callout-warning {
+    @apply p-4 rounded-xl border border-amber-100 bg-amber-50/50 text-amber-900 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-300 shadow-sm hover:shadow transition-shadow focus:outline-none focus:ring-2 focus:ring-amber-500;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════
