@@ -565,7 +565,7 @@ export default function App() {
   const badge = BADGE[phase as keyof typeof BADGE] ?? BADGE.idle;
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-850 dark:bg-zinc-950 dark:text-zinc-200 font-sans transition-colors duration-300 py-8 px-4">
+    <div className="min-h-screen bg-zinc-50 text-zinc-850 dark:bg-zinc-950 dark:text-zinc-200 font-sans transition-colors duration-300 pt-24 pb-8 px-4">
       <div className="max-w-6xl mx-auto flex flex-col gap-6">
         
         {/* ── HEADER ──────────────────────────────────────────────── */}
@@ -586,14 +586,6 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setDark(d => !d)}
-              className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-650 dark:text-zinc-400 hover:bg-zinc-150 dark:hover:bg-zinc-800 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-              aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-              type="button"
-            >
-              {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
             <div className={clsx("badge border px-3 py-1 rounded-full text-xs font-semibold select-none flex items-center gap-1.5 shadow-sm", badge.shadow, badge.cls)}>
               <span className="w-1.5 h-1.5 rounded-full bg-current" />
               {badge.label}
@@ -927,15 +919,15 @@ export default function App() {
           </div>
         )}
 
-        {/* ── FOOTER ──────────────────────────────────────────── */}
-        <footer className="flex items-center justify-between border-t border-zinc-250/60 dark:border-zinc-850/60 pt-5 text-xs text-zinc-400 dark:text-zinc-550 select-none">
+        {/* ── WORKSPACE METADATA ───────────────────────────────── */}
+        <div className="flex items-center justify-between text-[11px] text-zinc-450 dark:text-zinc-500 select-none mt-2">
           <span>
             Powered by <a href="https://groq.com" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-500 transition-colors font-medium">Groq completions</a>
           </span>
-          <span className="font-mono bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 border border-zinc-200 dark:border-zinc-800 rounded text-[10px]">
+          <span className="font-mono bg-zinc-200/50 dark:bg-zinc-900 px-2 py-0.5 border border-zinc-250 dark:border-zinc-800/60 rounded text-[9px]">
             {model}
           </span>
-        </footer>
+        </div>
 
       </div>
     </div>

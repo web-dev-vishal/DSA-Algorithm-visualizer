@@ -66,7 +66,7 @@ export function AnalyticsPage() {
       {/* Title Header */}
       <motion.div 
         variants={itemVariants}
-        className="flex items-center justify-between border-b border-zinc-200/60 dark:border-zinc-855 pb-5"
+        className="flex items-center justify-between border-b border-zinc-200/60 dark:border-zinc-850 pb-5"
       >
         <div>
           <h1 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">System Analytics</h1>
@@ -136,7 +136,7 @@ export function AnalyticsPage() {
           <h2 className="font-extrabold text-zinc-850 dark:text-white text-sm tracking-tight uppercase select-none mb-5">Weekly API vs Analysis Execution</h2>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={WEEKLY} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-zinc-200 dark:text-zinc-855" />
+              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-zinc-200 dark:text-zinc-850" />
               <XAxis dataKey="day" tick={{ fontSize: 10, fontWeight: 500 }} stroke="transparent" className="text-zinc-400" />
               <YAxis tick={{ fontSize: 10, fontWeight: 500 }} stroke="transparent" className="text-zinc-400" />
               <Tooltip contentStyle={{ borderRadius: 12, fontSize: 11 }} />
@@ -149,7 +149,7 @@ export function AnalyticsPage() {
         {/* Pie chart — by category */}
         <Card className="p-5 glass-card border-zinc-200/60 dark:border-zinc-850/60 shadow-sm flex flex-col justify-between">
           <div>
-            <h2 className="font-extrabold text-zinc-855 dark:text-white text-sm tracking-tight uppercase select-none mb-4">Algorithm Categorization</h2>
+            <h2 className="font-extrabold text-zinc-850 dark:text-white text-sm tracking-tight uppercase select-none mb-4">Algorithm Categorization</h2>
             <ResponsiveContainer width="100%" height={150}>
               <PieChart>
                 <Pie data={PIE_DATA} cx="50%" cy="50%" innerRadius={42} outerRadius={65} dataKey="value" paddingAngle={2}>

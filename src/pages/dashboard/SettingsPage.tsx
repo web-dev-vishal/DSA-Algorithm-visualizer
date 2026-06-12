@@ -46,7 +46,7 @@ export function SettingsPage({ defaultTab = "profile" }: { defaultTab?: string }
       >
         <div>
           <h1 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">System Settings</h1>
-          <p className="text-sm text-zinc-555 dark:text-zinc-450 mt-1 font-medium">Manage credentials, profile metadata, alert flags, and active sessions.</p>
+          <p className="text-sm text-zinc-550 dark:text-zinc-450 mt-1 font-medium">Manage credentials, profile metadata, alert flags, and active sessions.</p>
         </div>
       </motion.div>
 
@@ -89,9 +89,9 @@ export function SettingsPage({ defaultTab = "profile" }: { defaultTab?: string }
             transition={{ duration: 0.2 }}
             className="space-y-6"
           >
-            <Card className="overflow-hidden glass-card border-zinc-200/60 dark:border-zinc-855 shadow-sm">
+            <Card className="overflow-hidden glass-card border-zinc-200/60 dark:border-zinc-850 shadow-sm">
               <CardHeader className="border-b border-zinc-150 dark:border-zinc-850">
-                <h2 className="text-sm font-bold text-zinc-805 dark:text-white uppercase tracking-wider select-none">Profile Metadata</h2>
+                <h2 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider select-none">Profile Metadata</h2>
               </CardHeader>
               <CardBody className="p-6 space-y-6">
                 
@@ -294,7 +294,7 @@ export function SettingsPage({ defaultTab = "profile" }: { defaultTab?: string }
                 </p>
                 <div className="mt-4 bg-zinc-100/60 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm font-bold text-zinc-805 dark:text-zinc-200">Production Key active</p>
+                    <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">Production Key active</p>
                     <code className="text-xs text-zinc-450 dark:text-zinc-500 font-mono mt-0.5 block">avp_live_****8f9c</code>
                   </div>
                   <Badge variant="success" className="font-bold py-0.5">Active</Badge>

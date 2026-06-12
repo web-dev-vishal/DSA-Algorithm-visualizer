@@ -84,7 +84,7 @@ export function TeamPage() {
       <motion.div variants={itemVariants}>
         <Card className="overflow-hidden glass-card border-zinc-200/60 dark:border-zinc-850/60 shadow-sm">
           <CardHeader className="border-b border-zinc-150 dark:border-zinc-850">
-            <h2 className="text-sm font-bold text-zinc-805 dark:text-white uppercase tracking-wider select-none">Active Members ({MEMBERS.length})</h2>
+            <h2 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider select-none">Active Members ({MEMBERS.length})</h2>
           </CardHeader>
           <div className="divide-y divide-zinc-150 dark:divide-zinc-850">
             {MEMBERS.map(m => {

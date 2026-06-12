@@ -190,7 +190,7 @@ export function APIPage() {
       {/* Webhooks config */}
       <motion.div variants={itemVariants}>
         <Card className="overflow-hidden glass-card border-zinc-200/60 dark:border-zinc-850/60 shadow-sm">
-          <CardHeader className="border-b border-zinc-150 dark:border-zinc-855">
+          <CardHeader className="border-b border-zinc-150 dark:border-zinc-850">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider select-none">Webhooks</h2>
               <Button variant="secondary" size="sm" className="flex items-center gap-1.5 text-xs font-bold border border-zinc-200/80 dark:border-zinc-800 dark:hover:bg-zinc-850/50" leftIcon={<Webhook className="w-3.5 h-3.5" />} onClick={() => setWebhookModal(true)}>

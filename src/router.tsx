@@ -151,9 +151,11 @@ export function AppRouter() {
           </RequireAuth>
         } />
 
-        {/* ── Visualizer app (no marketing nav) ──── */}
+        {/* ── Visualizer app (with marketing layout for same UI feel) ──── */}
         <Route path="/app" element={
-          <Suspense fallback={<PageLoader />}><VisualizerApp /></Suspense>
+          <MarketingLayout>
+            <VisualizerApp />
+          </MarketingLayout>
         } />
 
         {/* ── Dashboard ──────────────────────────── */}
