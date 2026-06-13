@@ -105,7 +105,20 @@ app.use((req, res, next) => {
 // ── 9. General rate limiting ──────────────────────────────────────────
 app.use('/api', generalLimiter);
 
-// ── 10. Health Check ──────────────────────────────────────────────────
+// ── 10. Home Route ────────────────────────────────────────────────────
+app.get('/', (req, res) => {
+  return res.status(200).json(
+    new ApiResponse(200, {
+      name: 'DSA Algorithm Analyzer & Visualizer API',
+      status: 'online',
+      version: process.env.npm_package_version || '1.0.0',
+      docs: '/api-docs',
+      health: '/health'
+    }, 'Welcome to the DSA Visualizer API!')
+  );
+});
+
+// ── 11. Health Check ──────────────────────────────────────────────────
 // Uses the shared Redis connection — does NOT create a new connection per request (CRIT-05 fix)
 app.get('/health', async (req, res) => {
   const health = {

@@ -12,8 +12,11 @@ let isShuttingDown = false;
 
 async function bootstrap() {
   try {
+    logger.info('Starting DSA Visualizer API bootstrap process...');
+    logger.info('Validating configuration...');
     // Validate configuration before starting — fails hard if critical env vars missing
     validateConfig();
+    logger.info('Configuration validation passed');
 
     logger.info('Connecting to MongoDB...');
     await mongoose.connect(config.mongoUri, { autoIndex: true });
