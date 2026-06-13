@@ -618,6 +618,59 @@
   .prose strong { @apply font-bold text-zinc-900 dark:text-white; }
   .prose pre { @apply bg-zinc-950 text-zinc-200 rounded-xl p-4 overflow-x-auto font-mono text-sm; }
   .prose blockquote { @apply border-l-4 border-indigo-500 pl-4 italic text-zinc-500 dark:text-zinc-400; }
+  /* ── Infinite Scrolling Logo Marquee ── */
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  
+  .animate-marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee 25s linear infinite;
+  }
+  
+  .animate-marquee:hover {
+    animation-play-state: paused;
+  }
+
+  /* ── Interactive Spotlight Hover Cards ── */
+  .spotlight-card {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .spotlight-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      500px circle at var(--mouse-x, 0px) var(--mouse-y, 0px),
+      rgba(99, 102, 241, 0.09),
+      transparent 80%
+    );
+    opacity: 0;
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    z-index: 2;
+  }
+  
+  .spotlight-card:hover::before {
+    opacity: 1;
+  }
+  
+  html.dark .spotlight-card::before {
+    background: radial-gradient(
+      400px circle at var(--mouse-x, 0px) var(--mouse-y, 0px),
+      rgba(139, 92, 246, 0.14),
+      transparent 80%
+    );
+  }
+
+  /* ── Glowing Neon Border ── */
+  .glowing-border-active {
+    box-shadow: 0 0 0 2px var(--color-brand-500), 0 0 16px rgba(99, 102, 241, 0.4);
+  }
 }
 
 /* ── Tailwind v4 dark variant support ──────────────────────────── */

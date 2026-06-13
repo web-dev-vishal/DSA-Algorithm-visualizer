@@ -72,17 +72,17 @@ export interface VisualizationStep {
   /** Full array state at this moment */
   arr: number[];
   /** Indices being compared (blue) */
-  highlight: number[];
+  highlight?: number[];
   /** Reference indices (yellow) */
-  secondary: number[];
+  secondary?: number[];
   /** Finalized / sorted positions (green) */
-  done: number[];
+  done?: number[];
   /** Out-of-range / eliminated indices (grey) */
-  eliminated: number[];
+  eliminated?: number[];
   /** Indices being swapped (purple) */
-  swap: number[];
+  swap?: number[];
   /** Map of string-index → pointer label, e.g. { "0": "i", "3": "j" } */
-  pointers: Record<string, string>;
+  pointers?: Record<string, string>;
   /** 0-based index into codeLines for the currently executing line */
   activeLine: number;
   /** Human-readable description of what is happening in this step */

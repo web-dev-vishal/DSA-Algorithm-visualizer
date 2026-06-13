@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowRight, Play, Zap, Code2, BarChart3, Shield, Users, Star, 
-  Cpu, Sparkles, HelpCircle, ChevronDown
+  Sparkles, HelpCircle, ChevronDown
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { ThreeHero } from "../../components/ui/ThreeHero";
+import { clsx } from "clsx";
 
 const FEATURES = [
   { 
@@ -103,6 +104,156 @@ const FAQS = [
     a: "Our Pro and Team workspaces allow sharing. You can save code snippets, pointer state bookmarks, and collaborative notes in libraries that are shared across your team or classroom." 
   }
 ];
+
+/* ─── MiniVisualizer ─── */
+function MiniVisualizer() {
+  const [arr, setArr] = useState([7, 3, 9, 2, 5]);
+  const [activeIdxs, setActiveIdxs] = useState<number[]>([]);
+  const [swapIdxs, setSwapIdxs] = useState<number[]>([]);
+  const [doneIdxs, setDoneIdxs] = useState<number[]>([]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [msg, setMsg] = useState("Click 'Run Preview' to start Bubble Sort");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startBubbleSort = () => {
+    if (isPlaying) return;
+    setIsPlaying(true);
+    setDoneIdxs([]);
+    setActiveIdxs([]);
+    setSwapIdxs([]);
+    
+    const stepsQueue: Array<{ arr: number[]; act: number[]; swp: number[]; dn: number[]; msg: string }> = [];
+    const a = [...arr];
+    const n = a.length;
+    const currentDone: number[] = [];
+    
+    // Generate queue
+    for (let i = 0; i < n - 1; i++) {
+      for (let j = 0; j < n - i - 1; j++) {
+        stepsQueue.push({
+          arr: [...a],
+          act: [j, j + 1],
+          swp: [],
+          dn: [...currentDone],
+          msg: `Comparing elements: ${a[j]} and ${a[j+1]}`
+        });
+        if (a[j]! > a[j + 1]!) {
+          const temp = a[j]!;
+          a[j] = a[j + 1]!;
+          a[j + 1] = temp;
+          stepsQueue.push({
+            arr: [...a],
+            act: [],
+            swp: [j, j + 1],
+            dn: [...currentDone],
+            msg: `Swap: ${temp} > ${a[j]}. Swapping elements.`
+          });
+        }
+      }
+      currentDone.push(n - 1 - i);
+    }
+    currentDone.push(0);
+    stepsQueue.push({
+      arr: [...a],
+      act: [],
+      swp: [],
+      dn: [...currentDone],
+      msg: `Bubble Sort complete! Sorted: ${JSON.stringify(a)}`
+    });
+
+    let currentStep = 0;
+    const nextTick = () => {
+      if (currentStep >= stepsQueue.length) {
+        setIsPlaying(false);
+        return;
+      }
+      const step = stepsQueue[currentStep]!;
+      setArr(step.arr);
+      setActiveIdxs(step.act);
+      setSwapIdxs(step.swp);
+      setDoneIdxs(step.dn);
+      setMsg(step.msg);
+      currentStep++;
+      timerRef.current = setTimeout(nextTick, 1000);
+    };
+
+    nextTick();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const reset = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setIsPlaying(false);
+    setArr([7, 3, 9, 2, 5]);
+    setActiveIdxs([]);
+    setSwapIdxs([]);
+    setDoneIdxs([]);
+    setMsg("Preview reset. Click 'Run Preview' to start");
+  };
+
+  return (
+    <div className="border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 bg-zinc-50 dark:bg-zinc-900/60 shadow-sm flex flex-col gap-3 font-sans text-left">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full">Interactive Sandbox Preview</span>
+        <div className="flex gap-1.5">
+          <button
+            onClick={startBubbleSort}
+            disabled={isPlaying}
+            className="text-[10px] font-bold px-2 py-1 rounded bg-indigo-650 hover:bg-indigo-700 text-white disabled:opacity-50 cursor-pointer select-none transition-colors"
+          >
+            Run Preview
+          </button>
+          <button
+            onClick={reset}
+            className="text-[10px] font-bold px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer select-none transition-colors"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+      
+      <div className="flex justify-center items-end gap-2.5 h-14 py-1 select-none">
+        {arr.map((val, idx) => {
+          const isActive = activeIdxs.includes(idx);
+          const isSwapping = swapIdxs.includes(idx);
+          const isDone = doneIdxs.includes(idx);
+          
+          let cellCls = "bg-white border-zinc-200 text-zinc-700 dark:bg-zinc-900 dark:border-zinc-850 dark:text-zinc-350";
+          if (isSwapping) {
+            cellCls = "bg-purple-500/10 border-purple-500 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300";
+          } else if (isActive) {
+            cellCls = "bg-blue-500/10 border-blue-500 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300";
+          } else if (isDone) {
+            cellCls = "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300";
+          }
+
+          return (
+            <motion.div
+              layout
+              key={`mini-cell-${idx}-${val}`}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className={clsx(
+                "w-10 h-10 border-2 rounded-lg flex items-center justify-center font-black text-sm",
+                cellCls
+              )}
+            >
+              {val}
+            </motion.div>
+          );
+        })}
+      </div>
+      
+      <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed font-mono min-h-[1.5rem] bg-white dark:bg-zinc-950/50 p-2 rounded-lg border border-zinc-200/50 dark:border-zinc-850/50">
+        {msg}
+      </p>
+    </div>
+  );
+}
 
 export function HomePage() {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -240,41 +391,35 @@ export function HomePage() {
                 })}
               </div>
 
-              <div className="md:col-span-5 flex flex-col gap-4 border-t md:border-t-0 md:border-l border-zinc-200 dark:border-zinc-850 pt-4 md:pt-0 md:pl-6">
-                <div>
-                  <h4 className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wider mb-2 select-none">Constellation Array</h4>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {[1, 2, 4, 8].map((v, i) => {
-                      const swap = i === 1 || i === 2;
-                      return (
-                        <div
-                          key={i}
-                          className={`w-9 h-9 border rounded-lg flex items-center justify-center font-bold text-xs ${
-                            swap
-                              ? "bg-violet-50 dark:bg-violet-950/40 border-violet-500 text-violet-600 dark:text-violet-300 animate-pulse"
-                              : "bg-white border-zinc-200 text-zinc-600 dark:bg-zinc-900 dark:border-zinc-850 dark:text-zinc-450"
-                          }`}
-                        >
-                          {v}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className="bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 p-4 rounded-xl flex flex-col gap-1.5">
-                  <div className="flex items-center gap-1.5 text-indigo-500 dark:text-indigo-400">
-                    <Cpu className="w-3.5 h-3.5" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider select-none">Execution Explainer</span>
-                  </div>
-                  <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-normal font-sans">
-                    Swapping values at indices <span className="text-violet-600 dark:text-violet-400 font-semibold">1</span> and <span className="text-violet-600 dark:text-violet-400 font-semibold">2</span> (2 &lt;= 8). Array updates to [1, 2, 8, 4, 8].
-                  </p>
-                </div>
+              <div className="md:col-span-5 flex flex-col justify-center border-t md:border-t-0 md:border-l border-zinc-200 dark:border-zinc-850 pt-4 md:pt-0 md:pl-6">
+                <MiniVisualizer />
               </div>
             </div>
           </motion.div>
         </div>
       </section>
+
+      {/* Scrolling Marquee Logo Cloud */}
+      <div className="overflow-hidden py-10 bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-850 select-none">
+        <div className="max-w-6xl mx-auto px-4 mb-6 text-center">
+          <p className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Empowering students and engineers from global scale CS hubs</p>
+        </div>
+        <div className="relative flex w-full overflow-hidden">
+          <div className="animate-marquee flex items-center gap-16 whitespace-nowrap">
+            {["Google", "MIT", "Stripe", "Stanford", "Meta", "Apple", "Vercel", "Microsoft", "Netflix", "Amazon"].map((logo, idx) => (
+              <span key={idx} className="text-base sm:text-lg font-black text-zinc-450/40 dark:text-zinc-650/30 tracking-wider">
+                {logo}
+              </span>
+            ))}
+            {/* Double for continuous scroll */}
+            {["Google", "MIT", "Stripe", "Stanford", "Meta", "Apple", "Vercel", "Microsoft", "Netflix", "Amazon"].map((logo, idx) => (
+              <span key={`dup-${idx}`} className="text-base sm:text-lg font-black text-zinc-450/40 dark:text-zinc-650/30 tracking-wider">
+                {logo}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* ── STATS SECTION ────────────────────────────────────────────── */}
       <section className="border-y border-zinc-200 dark:border-zinc-850 bg-white dark:bg-zinc-900/30 py-12 relative z-20">

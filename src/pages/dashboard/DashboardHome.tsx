@@ -1,7 +1,8 @@
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
-import { Code2, Zap, ArrowRight, Play, Star, Activity, Users, BookOpen } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
+import { Code2, Zap, ArrowRight, Play, Star, Activity, Users, BookOpen, Search, Download, ChevronUp, ChevronDown, Filter } from "lucide-react";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
@@ -23,14 +24,16 @@ const RECENT_ANALYSES = [
   { id: "3", name: "Merge Sort",      category: "Sorting",        lang: "Java",   time: "3h ago",   complexity: "O(n log n)" },
   { id: "4", name: "Fibonacci DP",    category: "DP",             lang: "Python", time: "yesterday",complexity: "O(n)" },
   { id: "5", name: "Two Sum",         category: "Two Pointers",   lang: "JS",     time: "2d ago",   complexity: "O(n)" },
+  { id: "6", name: "Quick Sort",      category: "Sorting",        lang: "Python", time: "3d ago",   complexity: "O(n log n)" },
+  { id: "7", name: "DFS Graph",       category: "Graph",          lang: "Java",   time: "4d ago",   complexity: "O(V + E)" },
 ];
 
 const CATEGORY_DATA = [
-  { name: "Sorting",      count: 18, fill: "#6366f1" },
-  { name: "Searching",    count: 12, fill: "#8b5cf6" },
-  { name: "DP",           count: 9,  fill: "#06b6d4" },
-  { name: "Two Pointers", count: 7,  fill: "#10b981" },
-  { name: "Tree",         count: 5,  fill: "#f59e0b" },
+  { name: "Sorting",      count: 18, fill: "url(#colorSorting)" },
+  { name: "Searching",    count: 12, fill: "url(#colorSearching)" },
+  { name: "DP",           count: 9,  fill: "url(#colorDP)" },
+  { name: "Two Pointers", count: 7,  fill: "url(#colorPointers)" },
+  { name: "Tree",         count: 5,  fill: "url(#colorTree)" },
 ];
 
 const STAT_CARDS = [
@@ -40,10 +43,92 @@ const STAT_CARDS = [
   { label: "Algorithms Used",  value: "12",    delta: "of 15",icon: Star,      color: "text-amber-500",   bg: "bg-amber-50 dark:bg-amber-950/60" },
 ];
 
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: any[];
+  label?: string;
+}
+
+function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-zinc-950/95 border border-zinc-800 text-white p-3.5 rounded-2xl shadow-xl backdrop-blur-md font-sans text-xs flex flex-col gap-1.5 select-none">
+        <p className="font-bold text-zinc-400 border-b border-zinc-800 pb-1 mb-1">{label}</p>
+        {payload.map((p: any, idx: number) => (
+          <p key={idx} className="flex items-center gap-2 font-mono">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.stroke || p.fill }} />
+            <span className="text-zinc-350">{p.name}:</span>
+            <span className="font-bold text-white ml-auto">{p.value}</span>
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+}
+
 export function DashboardHome() {
   const { user } = useAuth();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+  // Data table state variables
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortField, setSortField] = useState<"name" | "category" | "lang" | "complexity" | "time">("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  const toggleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const filteredAndSortedAnalyses = useMemo(() => {
+    let result = [...RECENT_ANALYSES];
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        item =>
+          item.name.toLowerCase().includes(q) ||
+          item.category.toLowerCase().includes(q) ||
+          item.lang.toLowerCase().includes(q) ||
+          item.complexity.toLowerCase().includes(q)
+      );
+    }
+    result.sort((a, b) => {
+      const valA = a[sortField].toLowerCase();
+      const valB = b[sortField].toLowerCase();
+      if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+      if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+    return result;
+  }, [searchQuery, sortField, sortDirection]);
+
+  const exportToCSV = () => {
+    const headers = ["ID", "Name", "Category", "Language", "Time", "Complexity"];
+    const rows = filteredAndSortedAnalyses.map(a => [
+      a.id,
+      a.name,
+      a.category,
+      a.lang,
+      a.time,
+      a.complexity
+    ]);
+    const csvContent = 
+      "data:text/csv;charset=utf-8," + 
+      [headers.join(","), ...rows.map(e => e.map(val => `"${val}"`).join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `algoviz_analyses_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const containerVariants = {
     hidden: {},
@@ -129,30 +214,30 @@ export function DashboardHome() {
         {/* Area chart */}
         <Card className="lg:col-span-2 p-5 glass-card border-zinc-200/60 dark:border-zinc-850/60 shadow-sm">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="font-extrabold text-zinc-850 dark:text-white text-sm tracking-tight uppercase select-none">Analyses Trends</h2>
-            <Badge variant="primary">Last 7 Days</Badge>
+            <h2 className="font-extrabold text-zinc-850 dark:text-white text-sm tracking-tight uppercase select-none">Analyses & API Trends</h2>
+            <div className="flex gap-2 select-none">
+              <Badge variant="primary" className="bg-indigo-500/10 border-indigo-500/30 text-indigo-500">Analyses</Badge>
+              <Badge variant="primary" className="bg-cyan-500/10 border-cyan-500/30 text-cyan-500">API Calls</Badge>
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={DAILY_DATA} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorAnalyses" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
+                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
                   <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                 </linearGradient>
+                <linearGradient id="colorApi" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-zinc-200 dark:text-zinc-850" />
-              <XAxis dataKey="day" tick={{ fontSize: 10, fontWeight: 500 }} stroke="transparent" tickLine={false} className="text-zinc-400" />
-              <YAxis tick={{ fontSize: 10, fontWeight: 500 }} stroke="transparent" tickLine={false} className="text-zinc-400" />
-              <Tooltip
-                contentStyle={{ 
-                  background: "rgba(255, 255, 255, 0.9)", 
-                  border: "1px solid #e4e4e7", 
-                  borderRadius: 12, 
-                  fontSize: 11,
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.05)"
-                }}
-              />
-              <Area type="monotone" dataKey="analyses" stroke="#6366f1" strokeWidth={2.5} fill="url(#colorAnalyses)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-zinc-200 dark:text-zinc-850" opacity={0.3} />
+              <XAxis dataKey="day" tick={{ fontSize: 10, fontWeight: 550 }} stroke="transparent" tickLine={false} className="text-zinc-405" />
+              <YAxis tick={{ fontSize: 10, fontWeight: 550 }} stroke="transparent" tickLine={false} className="text-zinc-405" />
+              <Tooltip content={<CustomTooltip />} />
+              <Area type="monotone" name="Analyses Run" dataKey="analyses" stroke="#6366f1" strokeWidth={3} fill="url(#colorAnalyses)" />
+              <Area type="monotone" name="API Requests" dataKey="api" stroke="#06b6d4" strokeWidth={3} fill="url(#colorApi)" />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
@@ -162,43 +247,165 @@ export function DashboardHome() {
           <h2 className="font-extrabold text-zinc-850 dark:text-white text-sm tracking-tight uppercase select-none mb-5">Category Split</h2>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={CATEGORY_DATA} layout="vertical" margin={{ top: 0, right: 5, left: -25, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorSorting" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#4f46e5" />
+                  <stop offset="100%" stopColor="#6366f1" />
+                </linearGradient>
+                <linearGradient id="colorSearching" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#7c3aed" />
+                  <stop offset="100%" stopColor="#8b5cf6" />
+                </linearGradient>
+                <linearGradient id="colorDP" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#0891b2" />
+                  <stop offset="100%" stopColor="#06b6d4" />
+                </linearGradient>
+                <linearGradient id="colorPointers" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#059669" />
+                  <stop offset="100%" stopColor="#10b981" />
+                </linearGradient>
+                <linearGradient id="colorTree" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#d97706" />
+                  <stop offset="100%" stopColor="#f59e0b" />
+                </linearGradient>
+              </defs>
               <XAxis type="number" tick={{ fontSize: 10 }} stroke="transparent" />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fontWeight: 500 }} stroke="transparent" width={80} />
-              <Tooltip contentStyle={{ borderRadius: 10, fontSize: 11 }} />
-              <Bar dataKey="count" radius={[0, 6, 6, 0]} fill="#6366f1" />
+              <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fontWeight: 550 }} stroke="transparent" width={80} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="count" radius={[0, 6, 6, 0]}>
+                {CATEGORY_DATA.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </Card>
       </motion.div>
 
-      {/* Recent analyses */}
+      {/* Recent analyses Grid table */}
       <motion.div variants={itemVariants}>
-        <Card className="overflow-hidden glass-card border-zinc-200/60 dark:border-zinc-850/60 shadow-sm">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-150 dark:border-zinc-850">
-            <h2 className="font-extrabold text-zinc-850 dark:text-white text-sm tracking-tight uppercase select-none">Recent Analyses</h2>
-            <Link to="/dashboard/history" className="text-xs text-indigo-500 hover:text-indigo-650 dark:text-indigo-400 font-semibold flex items-center gap-1">
-              View All <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-          <div className="divide-y divide-zinc-100 dark:divide-zinc-850">
-            {RECENT_ANALYSES.map(a => (
-              <div key={a.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-zinc-100/40 dark:hover:bg-zinc-900/40 transition-colors group">
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center flex-shrink-0">
-                  <Code2 className="w-4 h-4 text-indigo-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-zinc-900 dark:text-white truncate">{a.name}</p>
-                  <p className="text-[11px] text-zinc-450 dark:text-zinc-500 font-medium">{a.category} · {a.lang}</p>
-                </div>
-                <Badge variant="default" className="hidden sm:flex text-[10px] font-mono">{a.complexity}</Badge>
-                <p className="text-[11px] text-zinc-400 font-medium whitespace-nowrap">{a.time}</p>
-                <Link to="/app" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button variant="ghost" size="icon" className="w-8 h-8">
-                    <Play className="w-3.5 h-3.5 fill-current text-indigo-500" />
-                  </Button>
-                </Link>
+        <Card className="overflow-hidden glass-card border-zinc-200/60 dark:border-zinc-850/60 shadow-sm flex flex-col">
+          {/* Header & Search / Filter Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 border-b border-zinc-150 dark:border-zinc-850">
+            <div>
+              <h2 className="font-extrabold text-zinc-850 dark:text-white text-sm tracking-tight uppercase select-none">Recent Analyses Database</h2>
+              <p className="text-[11px] text-zinc-450 dark:text-zinc-500 font-medium mt-0.5">Filter, sort, and export visual snapshots.</p>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Search bar */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+                <input
+                  type="search"
+                  placeholder="Filter database..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 pr-3 py-1.5 text-xs rounded-xl bg-zinc-50 border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-zinc-700 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-350 transition-all font-mono shadow-inner"
+                />
               </div>
-            ))}
+
+              {/* Export button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportToCSV}
+                className="text-xs font-bold border-zinc-200 flex items-center gap-1.5 shadow-sm"
+                leftIcon={<Download className="w-3.5 h-3.5" />}
+              >
+                Export CSV
+              </Button>
+            </div>
+          </div>
+
+          {/* Interactive Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-zinc-50/50 dark:bg-zinc-900/40 border-b border-zinc-150 dark:border-zinc-850 select-none text-zinc-400 font-bold uppercase tracking-wider font-mono">
+                  <th 
+                    onClick={() => toggleSort("name")}
+                    className="px-5 py-3 cursor-pointer hover:bg-zinc-100/40 dark:hover:bg-zinc-800/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Algorithm</span>
+                      {sortField === "name" && (sortDirection === "asc" ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => toggleSort("category")}
+                    className="px-5 py-3 cursor-pointer hover:bg-zinc-100/40 dark:hover:bg-zinc-800/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Category</span>
+                      {sortField === "category" && (sortDirection === "asc" ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => toggleSort("lang")}
+                    className="px-5 py-3 cursor-pointer hover:bg-zinc-100/40 dark:hover:bg-zinc-800/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Language</span>
+                      {sortField === "lang" && (sortDirection === "asc" ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => toggleSort("complexity")}
+                    className="px-5 py-3 cursor-pointer hover:bg-zinc-100/40 dark:hover:bg-zinc-800/40 transition-colors animate-scale"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Complexity</span>
+                      {sortField === "complexity" && (sortDirection === "asc" ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => toggleSort("time")}
+                    className="px-5 py-3 cursor-pointer hover:bg-zinc-100/40 dark:hover:bg-zinc-800/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Triggered</span>
+                      {sortField === "time" && (sortDirection === "asc" ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
+                    </div>
+                  </th>
+                  <th className="px-5 py-3 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-850">
+                {filteredAndSortedAnalyses.map(a => (
+                  <tr key={a.id} className="hover:bg-zinc-100/40 dark:hover:bg-zinc-900/40 transition-colors group">
+                    <td className="px-5 py-3.5 font-bold text-zinc-900 dark:text-white">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-500">
+                          <Code2 className="w-3.5 h-3.5" />
+                        </div>
+                        <span>{a.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-zinc-500 dark:text-zinc-400 font-semibold">{a.category}</td>
+                    <td className="px-5 py-3.5 font-mono text-[11px] text-zinc-450 dark:text-zinc-500">{a.lang}</td>
+                    <td className="px-5 py-3.5">
+                      <Badge variant="default" className="text-[10px] font-mono">{a.complexity}</Badge>
+                    </td>
+                    <td className="px-5 py-3.5 text-zinc-405 font-medium">{a.time}</td>
+                    <td className="px-5 py-3.5 text-center">
+                      <Link to="/app">
+                        <Button variant="ghost" size="icon" className="w-7 h-7 hover:bg-indigo-500/10">
+                          <Play className="w-3 h-3 fill-current text-indigo-500" />
+                        </Button>
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+                {filteredAndSortedAnalyses.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-10 text-center text-zinc-450 dark:text-zinc-500 font-bold">
+                      No matching records found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </Card>
       </motion.div>

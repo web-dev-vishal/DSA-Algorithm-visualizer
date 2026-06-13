@@ -51,6 +51,37 @@
         } catch(e) {}
       })();
     </script>
+    <!-- JSON-LD WebApp Structured Schema -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "AlgoViz Pro",
+        "operatingSystem": "All",
+        "applicationCategory": "EducationalApplication, DeveloperApplication",
+        "offers": {
+          "@type": "AggregateOffer",
+          "priceCurrency": "USD",
+          "lowPrice": "0",
+          "highPrice": "149",
+          "offerCount": "4"
+        },
+        "description": "Enterprise-grade AI-powered DSA algorithm visualizer. Step-by-step animations, Big-O time and space complexity audits, dynamic pointer tracking, bug check explainers, and shareable workspaces.",
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.9",
+          "ratingCount": "2500"
+        },
+        "featureList": [
+          "Interactive Playback Sandbox with Speed Seeks",
+          "AI-Powered Big-O Complexity Audits",
+          "Bugs and Logical Error Explanation Proposals",
+          "Multi-Language Code Compilation (C++, Python, Java, JS, TS, Go)",
+          "Interactive Sidebar AI Tutor Chat Pane",
+          "Interactive Viewport Modes: Horizontal Grid, Vertical Bars, Binary Tree, DP Matrix"
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
