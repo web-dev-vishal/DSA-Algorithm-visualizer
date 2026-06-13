@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dsa_visualizer_backend
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/dsa_visualizer
+      - REDIS_URL=redis://redis:6379
+      - COOKIE_SECRET=${COOKIE_SECRET}
+      - PASETO_PRIVATE_KEY=${PASETO_PRIVATE_KEY}
+      - PASETO_PUBLIC_KEY=${PASETO_PUBLIC_KEY}
+      - REFRESH_TOKEN_PRIVATE_KEY=${REFRESH_TOKEN_PRIVATE_KEY}
+      - REFRESH_TOKEN_PUBLIC_KEY=${REFRESH_TOKEN_PUBLIC_KEY}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - EMAIL_FROM=${EMAIL_FROM}
+      - CLIENT_URL=${CLIENT_URL}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    depends_on:
+      - mongodb
+      - redis
+    restart: always
+
+  mongodb:
+    image: mongo:7.0
+    container_name: dsa_visualizer_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: always
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: dsa_visualizer_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+volumes:
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
