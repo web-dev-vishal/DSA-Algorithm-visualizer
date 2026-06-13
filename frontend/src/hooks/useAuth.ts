@@ -20,7 +20,7 @@ export function useAuth(): UseAuthReturn {
     return authStore.subscribe(setUser);
   }, []);
 
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string): Promise<void> {
     setLoading(true);
     try {
       await authStore.login(email, password);
@@ -29,7 +29,7 @@ export function useAuth(): UseAuthReturn {
     }
   }
 
-  async function signup(name: string, email: string, password: string) {
+  async function signup(name: string, email: string, password: string): Promise<void> {
     setLoading(true);
     try {
       await authStore.signup(name, email, password);
@@ -38,11 +38,11 @@ export function useAuth(): UseAuthReturn {
     }
   }
 
-  function logout() {
+  function logout(): void {
     authStore.logout();
   }
 
-  function updateUser(updates: Partial<User>) {
+  function updateUser(updates: Partial<User>): void {
     authStore.updateUser(updates);
   }
 

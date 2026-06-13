@@ -918,52 +918,30 @@ Give a concise, 2-3 sentence friendly explanation tailored to their question. Ke
     setError("");
     setPlaying(false);
     if (timerRef.current) clearTimeout(timerRef.current);
-
-    let userMsg = "Analyze this DSA code and return the JSON:\n\n" + code;
-    if (customInput.trim()) {
-      userMsg += `\n\nPlease use this exact array as defaultInput: [${customInput.trim()}]`;
-    }
-
     try {
-      const res = await fetch(GROQ_URL, {
+      const res = await fetch("/api/analyze", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model,
-          temperature: 0.1,
-          max_tokens: 8000,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: userMsg }
-          ]
+          code,
+          language: DEMOS[activeDemo]?.lang || "JavaScript",
+          array: customInput.trim() ? customInput.split(",").map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n)) : undefined
         })
       });
 
       if (!res.ok) {
-        const d = await res.json().catch(() => ({})) as { error?: { message?: string } };
-        throw new Error(d?.error?.message ?? `Groq API returned status ${res.status}`);
+        const d = await res.json().catch(() => ({})) as { message?: string };
+        throw new Error(d?.message || `API returned status ${res.status}`);
       }
 
-      const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
-      const raw = data?.choices?.[0]?.message?.content ?? "";
-      const clean = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-
-      let parsed: AlgorithmAnalysis;
-      try {
-        parsed = JSON.parse(clean);
-      } catch {
-        const match = clean.match(/\{[\s\S]*\}/);
-        if (match) {
-          parsed = JSON.parse(match[0]);
-        } else {
-          throw new Error("Failed to parse AI response. Check input array formats.");
-        }
+      const responseData = await res.json() as { success: boolean; data: AlgorithmAnalysis; message?: string };
+      if (!responseData.success) {
+        throw new Error(responseData.message || "Analysis failed");
       }
 
-      setAnalysis(parsed);
+      setAnalysis(responseData.data);
       setStepIdx(0);
       setPhase("done");
     } catch (e) {

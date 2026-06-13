@@ -21,7 +21,7 @@ AI-powered tool to analyze, debug, explain, and visualize Data Structures & Algo
 ## 🚀 Installation
 
 ```bash
-git clone https://github.com/shainti/DSA-Algorithm-visualizer.git
+git clone https://github.com/backendwithvishal/DSA-Algorithm-visualizer.git
 cd DSA-Algorithm-visualizer
 npm install
 ```

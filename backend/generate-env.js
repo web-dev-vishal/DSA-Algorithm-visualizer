@@ -1,8 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(new URL(import.meta.url).pathname);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function generateEd25519Keys() {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519', {
@@ -20,8 +22,8 @@ function generateRandomHex(bytes = 32) {
 }
 
 function main() {
-  const envPath = path.join(process.cwd(), '.env');
-  const examplePath = path.join(process.cwd(), '.env.example');
+  const envPath = path.join(__dirname, '.env');
+  const examplePath = path.join(__dirname, '.env.example');
 
   if (fs.existsSync(envPath)) {
     console.log('.env file already exists. Skipping generation.');

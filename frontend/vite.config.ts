@@ -14,4 +14,13 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"), // Matches "paths" in tsconfig.json
     },
   },
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/api/, "/api/v1"),
+      },
+    },
+  },
 });

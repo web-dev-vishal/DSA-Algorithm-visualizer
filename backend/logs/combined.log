@@ -46,3 +46,17 @@
 {"errors":[],"level":"warn","message":"[Express Error Handler] Client warning: 401 - Invalid email or password","service":"dsa-visualizer-backend","timestamp":"2026-06-13 17:57:52"}
 {"errors":[],"level":"warn","message":"[Express Error Handler] Client warning: 403 - Account locked due to too many failed attempts. A notification has been sent to your email.","service":"dsa-visualizer-backend","timestamp":"2026-06-13 17:57:53"}
 {"errors":[],"level":"warn","message":"[Express Error Handler] Client warning: 403 - Account locked. Try again in 15 minutes.","service":"dsa-visualizer-backend","timestamp":"2026-06-13 17:57:53"}
+{"level":"info","message":"BullMQ Queues initialized","service":"dsa-visualizer-backend","timestamp":"2026-06-13 18:06:08"}
+{"errors":[{"field":"name","message":"Name must be at least 2 characters"},{"field":"email","message":"Invalid email address"},{"field":"password","message":"Password must be at least 8 characters"}],"level":"warn","message":"[Express Error Handler] Client warning: 400 - Validation failed for request body","service":"dsa-visualizer-backend","timestamp":"2026-06-13 18:06:09"}
+{"errors":[],"level":"warn","message":"[Express Error Handler] Client warning: 400 - Email already in use","service":"dsa-visualizer-backend","timestamp":"2026-06-13 18:06:10"}
+{"errors":[],"level":"warn","message":"[Express Error Handler] Client warning: 401 - Invalid email or password","service":"dsa-visualizer-backend","timestamp":"2026-06-13 18:06:12"}
+{"errors":[],"level":"warn","message":"[Express Error Handler] Client warning: 401 - Invalid email or password","service":"dsa-visualizer-backend","timestamp":"2026-06-13 18:06:13"}
+{"errors":[],"level":"warn","message":"[Express Error Handler] Client warning: 401 - Invalid email or password","service":"dsa-visualizer-backend","timestamp":"2026-06-13 18:06:13"}
+{"errors":[],"level":"warn","message":"[Express Error Handler] Client warning: 401 - Invalid email or password","service":"dsa-visualizer-backend","timestamp":"2026-06-13 18:06:13"}
+{"errors":[],"level":"warn","message":"[Express Error Handler] Client warning: 401 - Invalid email or password","service":"dsa-visualizer-backend","timestamp":"2026-06-13 18:06:14"}
+{"errors":[],"level":"warn","message":"[Express Error Handler] Client warning: 403 - Account locked due to too many failed attempts. A notification has been sent to your email.","service":"dsa-visualizer-backend","timestamp":"2026-06-13 18:06:14"}
+{"errors":[],"level":"warn","message":"[Express Error Handler] Client warning: 403 - Account locked. Try again in 15 minutes.","service":"dsa-visualizer-backend","timestamp":"2026-06-13 18:06:14"}
+{"level":"info","message":"BullMQ Queues initialized","service":"dsa-visualizer-backend","timestamp":"2026-06-13 18:06:17"}
+{"level":"warn","message":"Groq API Key is not configured. Falling back to offline simulator.","service":"dsa-visualizer-backend","timestamp":"2026-06-13 18:06:18"}
+{"level":"info","message":"Successfully saved and cached code analysis.","service":"dsa-visualizer-backend","timestamp":"2026-06-13 18:06:18"}
+{"errors":[{"field":"code","message":"Code is required to analyze"}],"level":"warn","message":"[Express Error Handler] Client warning: 400 - Validation failed for request body","service":"dsa-visualizer-backend","timestamp":"2026-06-13 18:06:18"}

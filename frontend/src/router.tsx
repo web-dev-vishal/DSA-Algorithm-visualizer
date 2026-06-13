@@ -40,7 +40,7 @@ const SettingsPage   = lazy(() => import("./pages/dashboard/SettingsPage").then(
 const VisualizerApp = lazy(() => import("./components/AppTailwind").then(m => ({ default: m.default })));
 
 // ── Helpers ────────────────────────────────────────────────────────
-function PageLoader() {
+function PageLoader(): ReactElement {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-8 space-y-4">
       <Skeleton className="h-8 w-64 mx-auto" />
@@ -52,7 +52,7 @@ function PageLoader() {
   );
 }
 
-function RequireAuth({ children }: { children: React.ReactNode }) {
+function RequireAuth({ children }: { children: React.ReactNode }): ReactElement {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
@@ -68,12 +68,12 @@ function getInitialDark(): boolean {
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
 }
 
-function applyDark(dark: boolean) {
+function applyDark(dark: boolean): void {
   document.documentElement.classList.toggle("dark", dark);
 }
 
 // ── Marketing layout ───────────────────────────────────────────────
-function MarketingLayout({ children }: { children: React.ReactNode }) {
+function MarketingLayout({ children }: { children: React.ReactNode }): ReactElement {
   return (
     <>
       <MarketingNav />
@@ -84,7 +84,7 @@ function MarketingLayout({ children }: { children: React.ReactNode }) {
 }
 
 // ── Dashboard layout wrapper ───────────────────────────────────────
-function DashboardWrapper({ children, darkMode, onToggleDark }: { children: React.ReactNode; darkMode: boolean; onToggleDark: () => void }) {
+function DashboardWrapper({ children, darkMode, onToggleDark }: { children: React.ReactNode; darkMode: boolean; onToggleDark: () => void }): ReactElement {
   return (
     <RequireAuth>
       <DashboardLayout darkMode={darkMode} onToggleDark={onToggleDark}>
@@ -104,14 +104,14 @@ export function AppRouter(): ReactElement {
   }, [darkMode]);
 
   useEffect(() => {
-    const handleSync = () => {
+    const handleSync = (): void => {
       setDarkMode(getInitialDark());
     };
     window.addEventListener("storage", handleSync);
     return () => window.removeEventListener("storage", handleSync);
   }, []);
 
-  function toggleDark() { setDarkMode(d => !d); }
+  function toggleDark(): void { setDarkMode(d => !d); }
 
   return (
     <BrowserRouter>

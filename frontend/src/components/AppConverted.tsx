@@ -3,8 +3,7 @@ import type React from "react";
 import "./App.css";
 
 /* ─── Groq config ─────────────────────────────────────────────────── */
-const GROQ_API_KEY: string | undefined = import.meta.env.VITE_groqApi as string | undefined;
-const GROQ_URL: string = "https://api.groq.com/openai/v1/chat/completions";
+// Groq credentials are now managed securely by the backend.
 
 interface GroqModel {
   id: string;
@@ -22,58 +21,7 @@ const GROQ_MODELS: GroqModel[] = [
 ];
 const DEFAULT_MODEL: string = GROQ_MODELS[0]?.id ?? "llama-3.3-70b-versatile";
 
-/* ─── System prompt ───────────────────────────────────────────────── */
-const SYSTEM_PROMPT: string = `You are an expert DSA (Data Structures & Algorithms) tutor and step-by-step visualizer.
-Your ONLY output must be a single valid JSON object — no markdown fences, no backticks, no commentary, nothing outside the JSON.
 
-Required JSON shape:
-{
-  "isValid": true,
-  "language": "C++",
-  "algorithmName": "Bubble Sort",
-  "category": "Sorting",
-  "isCorrect": true,
-  "bugs": [],
-  "correctedCode": "",
-  "timeComplexity": "O(n²)",
-  "spaceComplexity": "O(1)",
-  "explanation": "2-3 sentence plain-English description of what the algorithm does.",
-  "howItWorks": ["Step 1: ...", "Step 2: ..."],
-  "codeLines": [
-    { "line": "void bubbleSort(int arr[], int n) {", "explain": "Function taking the array and its size n" }
-  ],
-  "defaultInput": [5, 3, 8, 1, 2],
-  "steps": [
-    {
-      "arr": [5, 3, 8, 1, 2],
-      "highlight": [0, 1],
-      "secondary": [],
-      "done": [],
-      "eliminated": [],
-      "swap": [],
-      "pointers": { "0": "i", "1": "j" },
-      "activeLine": 2,
-      "msg": "We start by looking at the first two elements, 5 and 3. We will compare them."
-    }
-  ]
-}
-
-STRICT RULES:
-- defaultInput: 5-8 elements that clearly demonstrate the algorithm. Integers only.
-- steps: simulate EVERY individual operation (comparison, swap, assignment) on defaultInput from start to finish.
-- Each step: arr must reflect the FULL array state at that moment (copy it correctly each time).
-- pointers keys MUST be STRING indices: "0", "1", "3" — not numbers.
-- activeLine: 0-based index into codeLines. Must match the line executing at that step.
-- msg: friendly, concrete — mention actual values. Like explaining to a curious 15-year-old.
-- highlight: indices being compared (blue). secondary: reference indices (yellow).
-- swap: BOTH indices being swapped (purple). done: finalized positions (green). eliminated: out-of-range (grey).
-- DSA categories supported: Sorting (Bubble/Selection/Insertion/Merge/Quick), Searching (Linear/Binary),
-  Two Pointers, Sliding Window, Recursion, Stack, Queue, Linked List traversal,
-  Tree traversal (BFS/DFS), Dynamic Programming (use arr for dp table), Graph algorithms.
-- For DP: arr represents the dp array — show it building up step by step.
-- Minimum 3 steps always.
-- If code is not valid DSA: isValid=false, steps=[].
-- If bugs found: isCorrect=false, bugs=["description..."], correctedCode="...", then simulate the CORRECTED code.`;
 
 interface DemoEntry {
   label: string;
@@ -381,12 +329,6 @@ export default function App(): React.ReactElement {
   async function analyze(): Promise<void> {
     if (!code.trim()) return;
 
-    if (!GROQ_API_KEY || GROQ_API_KEY.trim() === "") {
-      setError("No API key. Add VITE_groqApi=your_key to the .env file, then restart the dev server.");
-      setPhase("error");
-      return;
-    }
-
     setPhase("analyzing");
     setAnalysis(null);
     setError("");
@@ -395,62 +337,30 @@ export default function App(): React.ReactElement {
       clearTimeout(timerRef.current);
     }
 
-    let userMsg: string = "Analyze this DSA code and return the JSON:\n\n" + code;
-    if (customInput.trim()) {
-      userMsg += `\n\nPlease use this exact array as defaultInput: [${customInput.trim()}]`;
-    }
-
     try {
-      const res: Response = await fetch(GROQ_URL, {
+      const res: Response = await fetch("/api/analyze", {
         method: "POST",
         headers: {
-          "Content-Type":  "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model,
-          temperature: 0.1,
-          max_tokens:  8000,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user",   content: userMsg },
-          ],
+          code,
+          language: DEMOS[activeDemo]?.lang || "JavaScript",
+          array: customInput.trim() ? customInput.split(",").map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n)) : undefined
         }),
       });
 
       if (!res.ok) {
-        const d: { error?: { message?: string } } = await res.json().catch(() => ({})) as { error?: { message?: string } };
-        const msg: string = d?.error?.message ?? "";
-        if (res.status === 401) throw new Error("Invalid API key. Check your .env file.");
-        if (res.status === 429) throw new Error("Rate limit hit. Wait a moment and try again.");
-        if (res.status === 400 && msg.includes("model")) {
-          throw new Error(`Model "${model}" is not available on your Groq plan. Try a different model.`);
-        }
-        throw new Error(msg || `Groq API error ${res.status}`);
+        const d: { message?: string } = await res.json().catch(() => ({})) as { message?: string };
+        throw new Error(d?.message || `API returned status ${res.status}`);
       }
 
-      const data: { choices?: Array<{ message?: { content?: string } }> } = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
-      const raw: string = data?.choices?.[0]?.message?.content ?? "";
-
-      // Strip markdown fences the model may accidentally add
-      const clean: string = raw
-        .replace(/^```(?:json)?\s*/i, "")
-        .replace(/\s*```$/,           "")
-        .trim();
-
-      let parsed: AlgorithmAnalysis;
-      try {
-        parsed = JSON.parse(clean) as AlgorithmAnalysis;
-      } catch {
-        const match: RegExpMatchArray | null = clean.match(/\{[\s\S]*\}/);
-        if (match) {
-          parsed = JSON.parse(match[0]) as AlgorithmAnalysis;
-        } else {
-          throw new Error("AI returned invalid JSON. Try again or switch to a larger model.");
-        }
+      const responseData = await res.json() as { success: boolean; data: AlgorithmAnalysis; message?: string };
+      if (!responseData.success) {
+        throw new Error(responseData.message || "Analysis failed");
       }
 
-      setAnalysis(parsed);
+      setAnalysis(responseData.data);
       setStepIdx(0);
       setPhase("done");
     } catch (e: unknown) {
