@@ -4,6 +4,28 @@ import logger from '../utils/logger.js';
 
 class EmailService {
   constructor() {
+    this.isMock = false;
+    
+    // Check if we have credentials
+    const hasCredentials = config.email.user && config.email.pass;
+
+    if (config.env === 'development' && !hasCredentials) {
+      this.setupMockTransporter('Credentials not configured');
+      return;
+    }
+
+    this.setupRealTransporter();
+  }
+
+  setupMockTransporter(reason) {
+    logger.warn(`Email service running in MOCK mode (${reason}). Emails will be logged to console.`);
+    this.isMock = true;
+    this.transporter = nodemailer.createTransport({
+      jsonTransport: true
+    });
+  }
+
+  setupRealTransporter() {
     this.transporter = nodemailer.createTransport({
       host: config.email.host,
       port: config.email.port,
@@ -13,11 +35,13 @@ class EmailService {
       }
     });
 
-    // Verify connection on startup
     if (config.env !== 'test') {
       this.transporter.verify((error) => {
         if (error) {
           logger.error('Email service SMTP connection failed:', error);
+          if (config.env === 'development') {
+            this.setupMockTransporter(`SMTP connection verification failed: ${error.message}`);
+          }
         } else {
           logger.info('Email service SMTP connection successful');
         }
@@ -35,7 +59,17 @@ class EmailService {
       };
 
       const info = await this.transporter.sendMail(mailOptions);
-      logger.debug(`Email sent successfully: ${info.messageId}`);
+      if (this.isMock) {
+        logger.info(`[MOCK EMAIL] Sent to ${to} with subject "${subject}"`);
+        // Find links in html and log them for convenience
+        const linkMatches = html.match(/href="([^"]+)"/g);
+        if (linkMatches) {
+          const links = linkMatches.map(m => m.slice(6, -1));
+          logger.info(`[MOCK EMAIL] Links found in email: ${links.join(', ')}`);
+        }
+      } else {
+        logger.debug(`Email sent successfully: ${info.messageId}`);
+      }
       return info;
     } catch (error) {
       logger.error('Failed to send email:', error);

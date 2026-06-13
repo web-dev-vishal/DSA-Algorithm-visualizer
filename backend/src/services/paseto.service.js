@@ -8,13 +8,31 @@ const { V4 } = paseto;
 const ISSUER = config.paseto.issuer;
 const AUDIENCE = config.paseto.audience;
 
+let devKeys = null;
+
+function getDevKeys() {
+  if (!devKeys) {
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519', {
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+    });
+    devKeys = { publicKey, privateKey };
+  }
+  return devKeys;
+}
+
 /**
  * Convert a PEM string to a Node.js private key object.
  * @param {string} pemString 
  * @returns {import('crypto').KeyObject}
  */
 function getPrivateKey(pemString) {
-  if (!pemString) throw new Error('PASETO private key is not configured. Set PASETO_PRIVATE_KEY in .env');
+  if (!pemString) {
+    if (config.env === 'production') {
+      throw new Error('PASETO private key is not configured. Set PASETO_PRIVATE_KEY in .env');
+    }
+    return crypto.createPrivateKey(getDevKeys().privateKey);
+  }
   return crypto.createPrivateKey(pemString);
 }
 
@@ -24,7 +42,12 @@ function getPrivateKey(pemString) {
  * @returns {import('crypto').KeyObject}
  */
 function getPublicKey(pemString) {
-  if (!pemString) throw new Error('PASETO public key is not configured. Set PASETO_PUBLIC_KEY in .env');
+  if (!pemString) {
+    if (config.env === 'production') {
+      throw new Error('PASETO public key is not configured. Set PASETO_PUBLIC_KEY in .env');
+    }
+    return crypto.createPublicKey(getDevKeys().publicKey);
+  }
   return crypto.createPublicKey(pemString);
 }
 
