@@ -1473,99 +1473,107 @@ Give a concise, 2-3 sentence friendly explanation tailored to their question. Ke
         {/* AI Tutor Sidebar Panel */}
         <AnimatePresence>
           {tutorOpen && (
-            <motion.div
-              initial={{ opacity: 0, x: 50, width: 0 }}
-              animate={{ opacity: 1, x: 0, width: "100%" }}
-              exit={{ opacity: 0, x: 50, width: 0 }}
-              className="w-full lg:w-[350px] shrink-0 lg:sticky lg:top-24 z-30"
-            >
+            <>
+              {/* Backdrop overlay for mobile */}
               <div 
-                onMouseMove={handleMouseMove}
-                className="glass-card spotlight-card rounded-2xl border border-zinc-200 dark:border-zinc-850 p-4 flex flex-col h-[650px] shadow-xl bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl relative"
+                className="lg:hidden fixed inset-0 bg-black/45 dark:bg-black/60 z-40 animate-fade-in" 
+                onClick={() => setTutorOpen(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, x: 300 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 300 }}
+                transition={{ type: "spring", damping: 26, stiffness: 220 }}
+                className="fixed lg:sticky top-0 lg:top-24 right-0 bottom-0 z-50 lg:z-30 w-full sm:w-[380px] lg:w-[350px] shrink-0 h-screen lg:h-auto p-4 lg:p-0 flex flex-col"
               >
-                
-                {/* Tutor Header */}
-                <div className="flex items-center justify-between border-b border-zinc-150 dark:border-zinc-850/60 pb-3 mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="font-extrabold text-zinc-900 dark:text-white text-sm">DSA AI Tutor</h3>
-                      <p className="text-[10px] text-zinc-455 dark:text-zinc-550 font-bold uppercase tracking-wider">Active Assistant</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setTutorOpen(false)}
-                    className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-850 text-zinc-405 hover:text-zinc-650 transition-colors cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Message list */}
-                <div className="flex-1 overflow-y-auto space-y-3 pr-1 text-xs sm:text-sm">
-                  {tutorMessages.map((msg, i) => (
-                    <div
-                      key={i}
-                      className={clsx(
-                        "p-3 rounded-xl max-w-[85%] leading-relaxed",
-                        msg.sender === "tutor"
-                          ? "bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 mr-auto border border-zinc-100 dark:border-zinc-850"
-                          : "bg-indigo-600 text-white ml-auto font-medium"
-                      )}
-                    >
-                      {msg.text}
-                    </div>
-                  ))}
-                  {tutorLoading && (
-                    <div className="bg-zinc-50 dark:bg-zinc-900 mr-auto border border-zinc-100 dark:border-zinc-850 p-3 rounded-xl max-w-[85%] flex items-center gap-1.5 text-zinc-500 font-mono text-xs">
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce delay-100" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce delay-200" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Suggested prompt chips */}
-                <div className="my-3 flex flex-wrap gap-1.5">
-                  {[
-                    "Explain this step",
-                    "Time Complexity",
-                    "How to optimize?"
-                  ].map(chip => (
-                    <button
-                      key={chip}
-                      onClick={() => askTutor(chip)}
-                      className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-655 dark:text-indigo-400 border border-indigo-150/40 dark:border-indigo-900/40 text-[10px] font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer"
-                    >
-                      {chip}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Text input */}
-                <form
-                  onSubmit={(e) => { e.preventDefault(); askTutor(tutorInput); }}
-                  className="flex items-center gap-1.5 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1 bg-zinc-50 dark:bg-zinc-900 focus-within:ring-2 focus-within:ring-indigo-500/25"
+                <div 
+                  onMouseMove={handleMouseMove}
+                  className="glass-card spotlight-card rounded-2xl border border-zinc-200 dark:border-zinc-850 p-4 flex flex-col h-full lg:h-[650px] shadow-xl bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl relative"
                 >
-                  <input
-                    type="text"
-                    value={tutorInput}
-                    onChange={(e) => setTutorInput(e.target.value)}
-                    placeholder="Ask tutor something..."
-                    className="flex-1 bg-transparent text-xs p-2 outline-none border-none text-zinc-850 dark:text-zinc-100"
-                  />
-                  <button
-                    type="submit"
-                    className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow transition-colors cursor-pointer"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                  </button>
-                </form>
+                  
+                  {/* Tutor Header */}
+                  <div className="flex items-center justify-between border-b border-zinc-150 dark:border-zinc-850/60 pb-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-zinc-900 dark:text-white text-sm">DSA AI Tutor</h3>
+                        <p className="text-[10px] text-zinc-455 dark:text-zinc-550 font-bold uppercase tracking-wider">Active Assistant</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setTutorOpen(false)}
+                      className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-850 text-zinc-405 hover:text-zinc-650 transition-colors cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
 
-              </div>
-            </motion.div>
+                  {/* Message list */}
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-1 text-xs sm:text-sm">
+                    {tutorMessages.map((msg, i) => (
+                      <div
+                        key={i}
+                        className={clsx(
+                          "p-3 rounded-xl max-w-[85%] leading-relaxed",
+                          msg.sender === "tutor"
+                            ? "bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 mr-auto border border-zinc-100 dark:border-zinc-850"
+                            : "bg-indigo-600 text-white ml-auto font-medium"
+                        )}
+                      >
+                        {msg.text}
+                      </div>
+                    ))}
+                    {tutorLoading && (
+                      <div className="bg-zinc-50 dark:bg-zinc-900 mr-auto border border-zinc-100 dark:border-zinc-850 p-3 rounded-xl max-w-[85%] flex items-center gap-1.5 text-zinc-500 font-mono text-xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce delay-100" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce delay-200" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Suggested prompt chips */}
+                  <div className="my-3 flex flex-wrap gap-1.5">
+                    {[
+                      "Explain this step",
+                      "Time Complexity",
+                      "How to optimize?"
+                    ].map(chip => (
+                      <button
+                        key={chip}
+                        onClick={() => askTutor(chip)}
+                        className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-655 dark:text-indigo-400 border border-indigo-150/40 dark:border-indigo-900/40 text-[10px] font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Text input */}
+                  <form
+                    onSubmit={(e) => { e.preventDefault(); askTutor(tutorInput); }}
+                    className="flex items-center gap-1.5 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1 bg-zinc-50 dark:bg-zinc-900 focus-within:ring-2 focus-within:ring-indigo-500/25"
+                  >
+                    <input
+                      type="text"
+                      value={tutorInput}
+                      onChange={(e) => setTutorInput(e.target.value)}
+                      placeholder="Ask tutor something..."
+                      className="flex-1 bg-transparent text-xs p-2 outline-none border-none text-zinc-850 dark:text-zinc-100"
+                    />
+                    <button
+                      type="submit"
+                      className="p-2 rounded-lg bg-indigo-650 hover:bg-indigo-700 text-white shadow transition-colors cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                    </button>
+                  </form>
+
+                </div>
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
 

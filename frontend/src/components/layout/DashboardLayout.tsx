@@ -150,8 +150,8 @@ export function DashboardLayout({ children, darkMode, onToggleDark }: DashboardL
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
-          <div className="relative w-72 animate-[slideDown_0.2s_ease]">
+          <div className="absolute inset-0 bg-black/40 animate-fade-in" onClick={() => setSidebarOpen(false)} />
+          <div className="relative w-72 animate-slide-right">
             <Sidebar mobile />
           </div>
         </div>

@@ -218,7 +218,7 @@ export function DashboardHome(): ReactElement {
       )}
 
       {/* Stat cards */}
-      <motion.div variants={containerVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {STAT_CARDS.map(s => (
           <motion.div variants={itemVariants} key={s.label}>
             <Card className="p-5 glass-card border-zinc-200/60 dark:border-zinc-850/60 shadow-sm">

@@ -175,6 +175,11 @@
   to   { opacity: 1; }
 }
 
+@keyframes slideRight {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -493,6 +498,7 @@
   .animate-fade-in    { animation: fadeIn 0.2s ease both; }
   .animate-scale-in   { animation: scaleIn 0.15s ease both; }
   .animate-slide-down { animation: slideDown 0.2s ease both; }
+  .animate-slide-right { animation: slideRight 0.25s var(--ease-out) both; }
 
   /* Gradient text */
   .text-gradient {
