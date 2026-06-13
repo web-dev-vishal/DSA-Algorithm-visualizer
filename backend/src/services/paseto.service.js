@@ -5,30 +5,42 @@ import { UnauthorizedError } from '../errors/ApiError.js';
 
 const { V4 } = paseto;
 
-// Helper to convert PEM string to key object
-const getPrivateKeyObject = (pemString) => {
-  if (!pemString) throw new Error('PASETO Private Key is not configured');
-  return crypto.createPrivateKey(pemString);
-};
+const ISSUER = config.paseto.issuer;
+const AUDIENCE = config.paseto.audience;
 
-const getPublicKeyObject = (pemString) => {
-  if (!pemString) throw new Error('PASETO Public Key is not configured');
+/**
+ * Convert a PEM string to a Node.js private key object.
+ * @param {string} pemString 
+ * @returns {import('crypto').KeyObject}
+ */
+function getPrivateKey(pemString) {
+  if (!pemString) throw new Error('PASETO private key is not configured. Set PASETO_PRIVATE_KEY in .env');
+  return crypto.createPrivateKey(pemString);
+}
+
+/**
+ * Convert a PEM string to a Node.js public key object.
+ * @param {string} pemString
+ * @returns {import('crypto').KeyObject}
+ */
+function getPublicKey(pemString) {
+  if (!pemString) throw new Error('PASETO public key is not configured. Set PASETO_PUBLIC_KEY in .env');
   return crypto.createPublicKey(pemString);
-};
+}
 
 export class PasetoService {
   /**
-   * Generates a short-lived access token
-   * @param {Object} payload 
+   * Generates a short-lived access token signed with the access keypair.
+   * @param {Object} payload - Claims to embed in the token
    * @returns {Promise<string>}
    */
   static async generateAccessToken(payload) {
     try {
-      const privateKey = getPrivateKeyObject(config.paseto.privateKey);
+      const privateKey = getPrivateKey(config.paseto.privateKey);
       return await V4.sign(payload, privateKey, {
         expiresIn: config.paseto.accessTokenExpiry,
-        issuer: 'algoviz-api',
-        audience: 'algoviz-client'
+        issuer: ISSUER,
+        audience: AUDIENCE
       });
     } catch (err) {
       throw new Error(`Failed to generate access token: ${err.message}`);
@@ -36,34 +48,37 @@ export class PasetoService {
   }
 
   /**
-   * Verifies an access token
+   * Verifies an access token and returns the decoded payload.
    * @param {string} token 
    * @returns {Promise<Object>}
    */
   static async verifyAccessToken(token) {
     try {
-      const publicKey = getPublicKeyObject(config.paseto.publicKey);
+      const publicKey = getPublicKey(config.paseto.publicKey);
       return await V4.verify(token, publicKey, {
-        issuer: 'algoviz-api',
-        audience: 'algoviz-client'
+        issuer: ISSUER,
+        audience: AUDIENCE
       });
     } catch (err) {
-      throw new UnauthorizedError(`Invalid or expired access token: ${err.message}`);
+      throw new UnauthorizedError(`Invalid or expired access token`);
     }
   }
 
   /**
-   * Generates a long-lived refresh token
+   * Generates a long-lived refresh token signed with the refresh keypair.
+   * Falls back to the access keypair if refresh keys are not configured separately.
    * @param {Object} payload 
    * @returns {Promise<string>}
    */
   static async generateRefreshToken(payload) {
     try {
-      const privateKey = getPrivateKeyObject(config.configName === 'test' ? config.paseto.privateKey : config.refreshToken.privateKey);
+      // Use refresh-specific key if configured, otherwise fall back to access key
+      const keyPem = config.refreshToken.privateKey || config.paseto.privateKey;
+      const privateKey = getPrivateKey(keyPem);
       return await V4.sign(payload, privateKey, {
         expiresIn: config.paseto.refreshTokenExpiry,
-        issuer: 'algoviz-api',
-        audience: 'algoviz-client'
+        issuer: ISSUER,
+        audience: AUDIENCE
       });
     } catch (err) {
       throw new Error(`Failed to generate refresh token: ${err.message}`);
@@ -71,20 +86,22 @@ export class PasetoService {
   }
 
   /**
-   * Verifies a refresh token
+   * Verifies a refresh token and returns the decoded payload.
    * @param {string} token 
    * @returns {Promise<Object>}
    */
   static async verifyRefreshToken(token) {
     try {
-      const publicKey = getPublicKeyObject(config.configName === 'test' ? config.paseto.publicKey : config.refreshToken.publicKey);
+      const keyPem = config.refreshToken.publicKey || config.paseto.publicKey;
+      const publicKey = getPublicKey(keyPem);
       return await V4.verify(token, publicKey, {
-        issuer: 'algoviz-api',
-        audience: 'algoviz-client'
+        issuer: ISSUER,
+        audience: AUDIENCE
       });
     } catch (err) {
-      throw new UnauthorizedError(`Invalid or expired refresh token: ${err.message}`);
+      throw new UnauthorizedError(`Invalid or expired refresh token`);
     }
   }
 }
+
 export default PasetoService;

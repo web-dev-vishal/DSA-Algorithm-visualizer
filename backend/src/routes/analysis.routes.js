@@ -7,15 +7,18 @@ import { analyzeSchema } from '../validators/schemas.js';
 
 const router = Router();
 
-// Analyze code (supports both anonymous and logged in users)
+// Analyze code (supports anonymous and authenticated users)
 router.post('/', apiAnalysisLimiter, optionalAuthenticate, validate(analyzeSchema), AnalysisController.analyze);
+
+// Dashboard statistics (requires login)
+router.get('/stats', authenticate, AnalysisController.getStats);
 
 // History listing (requires login)
 router.get('/history', authenticate, AnalysisController.getHistory);
 router.delete('/history/:id', authenticate, AnalysisController.deleteHistory);
 router.patch('/history/:id/share', authenticate, AnalysisController.toggleShare);
 
-// Single analysis details (accessible by owner or public if shared)
+// Single analysis details (accessible by owner or if shared publicly)
 router.get('/:id', optionalAuthenticate, AnalysisController.getAnalysisDetails);
 
 export default router;

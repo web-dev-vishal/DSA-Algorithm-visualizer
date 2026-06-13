@@ -5,23 +5,47 @@ import RefreshToken from '../models/RefreshToken.js';
 import SecurityEvent from '../models/SecurityEvent.js';
 import UserPreference from '../models/UserPreference.js';
 import PasetoService from '../services/paseto.service.js';
-import { emailQueue, notificationQueue } from '../queues/queue.js';
+import { emailQueue } from '../queues/queue.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { BadRequestError, UnauthorizedError, ForbiddenError, NotFoundError } from '../errors/ApiError.js';
 import logger from '../utils/logger.js';
 import config from '../config/index.js';
 
-// Parse simple device info from user-agent
-const getDeviceDetails = (req) => {
+// ── Constants ────────────────────────────────────────────────────────
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const REFRESH_TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const ACCESS_TOKEN_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
+
+/**
+ * Build a cookie options object with secure defaults.
+ */
+function makeCookieOptions(maxAge) {
+  return {
+    httpOnly: true,
+    secure: config.env === 'production',
+    sameSite: 'strict',
+    path: '/',
+    maxAge
+  };
+}
+
+/**
+ * Extract device information from the request's User-Agent header.
+ * @param {import('express').Request} req
+ * @returns {{ userAgent: string, browser: string, os: string, deviceType: string, ipAddress: string }}
+ */
+function getDeviceDetails(req) {
   const ua = req.headers['user-agent'] || 'Unknown';
   let browser = 'Unknown';
   let os = 'Unknown';
   let deviceType = 'desktop';
 
   if (ua.includes('Firefox')) browser = 'Firefox';
+  else if (ua.includes('Edg')) browser = 'Edge';
   else if (ua.includes('Chrome')) browser = 'Chrome';
   else if (ua.includes('Safari')) browser = 'Safari';
-  else if (ua.includes('Edge')) browser = 'Edge';
+  else if (ua.includes('curl')) browser = 'curl';
 
   if (ua.includes('Windows')) os = 'Windows';
   else if (ua.includes('Macintosh')) os = 'macOS';
@@ -34,67 +58,67 @@ const getDeviceDetails = (req) => {
     deviceType = 'mobile';
   }
 
-  return {
-    userAgent: ua,
-    browser,
-    os,
-    deviceType,
-    ipAddress: req.ip || req.connection.remoteAddress || 'Unknown'
-  };
-};
+  // req.ip is set by express-rate-limit / proxy middleware
+  const ipAddress = req.ip || req.socket?.remoteAddress || 'Unknown';
 
-// Hash token helper
-const hashToken = (token) => {
+  return { userAgent: ua, browser, os, deviceType, ipAddress };
+}
+
+/**
+ * Hash a token with SHA-256 before storing.
+ * @param {string} token
+ * @returns {string}
+ */
+function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
-};
+}
+
+/**
+ * Log a security event to the database (non-blocking, errors only logged).
+ */
+async function logSecurityEvent(data) {
+  try {
+    await SecurityEvent.create(data);
+  } catch (err) {
+    logger.error('Failed to save security event:', err);
+  }
+}
 
 export class AuthController {
   // ── Register ───────────────────────────────────────────────────────
   static async register(req, res, next) {
     try {
-      const { name, email, password } = req.body;
+      const { name, email, password } = req.validatedBody;
 
-      // Check if user already exists
       const existingUser = await User.findOne({ email });
       if (existingUser) {
-        throw new BadRequestError('Email already in use');
+        throw new BadRequestError('An account with this email already exists');
       }
 
-      // Create new user
-      const user = new User({ name, email, password });
-      await user.save();
+      const user = await User.create({ name, email, password });
 
-      // Create preferences default
-      const prefs = new UserPreference({ userId: user._id });
-      await prefs.save();
+      // Create default user preferences
+      await UserPreference.create({ userId: user._id }).catch(err => {
+        logger.warn(`Failed to create user preferences for ${user._id}:`, err);
+      });
 
-      // Generate verification token (simple random hex)
+      // Generate email verification token
       const verifyToken = crypto.randomBytes(32).toString('hex');
       const verifyTokenHash = hashToken(verifyToken);
-      
-      // Save verification state or send welcome job
-      if (emailQueue) {
-        await emailQueue.add('welcome_email', {
-          type: 'welcome',
-          data: { user: { name: user.name, email: user.email } }
-        });
-        await emailQueue.add('verify_email', {
-          type: 'verify',
-          data: { user: { name: user.name, email: user.email }, token: verifyToken }
-        });
-      }
 
-      // We store the verification token in user model briefly or simply mock verification
-      // For this app, let's allow user verification directly
-      user.failedLoginAttempts = 0;
-      // Storing verification hash on the user instance
-      user.set('emailVerifyHash', verifyTokenHash, { strict: false });
-      user.set('emailVerifyExpires', Date.now() + 24 * 3600 * 1000, { strict: false });
+      user.emailVerifyHash = verifyTokenHash;
+      user.emailVerifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       await user.save();
+
+      // Queue welcome and verification emails (non-blocking)
+      if (emailQueue) {
+        await emailQueue.add('welcome_email', { type: 'welcome', data: { user: { name: user.name, email: user.email } } });
+        await emailQueue.add('verify_email', { type: 'verify', data: { user: { name: user.name, email: user.email }, token: verifyToken } });
+      }
 
       return ApiResponse.success(res, {
         user: { id: user._id, name: user.name, email: user.email, role: user.role, plan: user.plan }
-      }, 'Registration successful! Verification email sent.', 201);
+      }, 'Registration successful! Please check your email to verify your account.', 201);
     } catch (err) {
       next(err);
     }
@@ -103,71 +127,68 @@ export class AuthController {
   // ── Login ──────────────────────────────────────────────────────────
   static async login(req, res, next) {
     try {
-      const { email, password } = req.body;
+      const { email, password } = req.validatedBody;
       const device = getDeviceDetails(req);
 
+      // Always select password for comparison
       const user = await User.findOne({ email }).select('+password');
       if (!user) {
+        // Timing-safe: don't reveal whether email exists
+        await bcryptTimingDelay();
         throw new UnauthorizedError('Invalid email or password');
       }
 
-      // Check Account lock status
+      // Check account lock
       if (user.isLocked()) {
         const lockMinutes = Math.ceil((user.lockUntil - Date.now()) / 60000);
-        throw new ForbiddenError(`Account locked. Try again in ${lockMinutes} minutes.`);
+        throw new ForbiddenError(`Account is temporarily locked. Try again in ${lockMinutes} minute${lockMinutes !== 1 ? 's' : ''}.`);
       }
 
-      // Compare password
       const isMatch = await user.comparePassword(password);
+
       if (!isMatch) {
-        // Track failed attempt
         user.failedLoginAttempts += 1;
-        
-        const securityEvent = new SecurityEvent({
+
+        await logSecurityEvent({
           userId: user._id,
           email: user.email,
           eventType: 'failed_login',
           ipAddress: device.ipAddress,
           userAgent: device.userAgent
         });
-        await securityEvent.save();
 
-        if (user.failedLoginAttempts >= 5) {
-          user.lockUntil = Date.now() + 15 * 60 * 1000; // 15 mins
+        if (user.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
+          user.lockUntil = new Date(Date.now() + LOCK_DURATION_MS);
           await user.save();
 
-          // Create security event lockout
-          const lockoutEvent = new SecurityEvent({
+          await logSecurityEvent({
             userId: user._id,
             email: user.email,
             eventType: 'lockout',
             ipAddress: device.ipAddress,
             userAgent: device.userAgent
           });
-          await lockoutEvent.save();
 
           if (emailQueue) {
-            await emailQueue.add('lockout_email', {
-              type: 'lockout',
-              data: { user: { name: user.name, email: user.email } }
-            });
+            await emailQueue.add('lockout_email', { type: 'lockout', data: { user: { name: user.name, email: user.email } } });
           }
 
-          throw new ForbiddenError('Account locked due to too many failed attempts. A notification has been sent to your email.');
+          throw new ForbiddenError('Account locked due to too many failed attempts. A security alert has been sent to your email.');
         }
 
         await user.save();
         throw new UnauthorizedError('Invalid email or password');
       }
 
-      // Login Successful: Reset locks
+      // ── Login successful ──────────────────────────────────────────
       user.failedLoginAttempts = 0;
-      user.lockUntil = undefined;
+      user.lockUntil = null;
       await user.save();
 
-      // Create new session
-      const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000); // 7 days
-      const session = new Session({
+      const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS);
+
+      // Create session record
+      const session = await Session.create({
         userId: user._id,
         browser: device.browser,
         os: device.os,
@@ -175,77 +196,61 @@ export class AuthController {
         ipAddress: device.ipAddress,
         userAgent: device.userAgent,
         expiresAt,
-        refreshTokHash: 'pending' // will be populated shortly
+        refreshTokHash: 'initializing' // Placeholder updated below
       });
-      await session.save();
 
-      // Generate Refresh Token
+      // Generate and store refresh token
       const refreshToken = await PasetoService.generateRefreshToken({
-        userId: user._id,
-        sessionId: session._id
+        userId: user._id.toString(),
+        sessionId: session._id.toString()
       });
       const refreshHash = hashToken(refreshToken);
 
-      // Save token hash to session
       session.refreshTokHash = refreshHash;
       await session.save();
 
-      // Store in DB RefreshToken (rotation check)
-      const tokenDoc = new RefreshToken({
-        userId: user._id,
-        token: refreshHash,
-        expiresAt
-      });
-      await tokenDoc.save();
+      await RefreshToken.create({ userId: user._id, token: refreshHash, expiresAt });
 
-      // Generate Access Token
+      // Generate access token
       const accessToken = await PasetoService.generateAccessToken({
-        userId: user._id,
-        sessionId: session._id,
+        userId: user._id.toString(),
+        sessionId: session._id.toString(),
         role: user.role,
         plan: user.plan
       });
 
-      // Log security event success
-      const successEvent = new SecurityEvent({
+      // Log successful login
+      await logSecurityEvent({
         userId: user._id,
         email: user.email,
-        eventType: 'failed_login', // just an example, but we could log standard login
+        eventType: 'login',
         ipAddress: device.ipAddress,
         userAgent: device.userAgent
       });
-      // We customize eventType locally
-      successEvent.eventType = 'failed_login'; // Actually we can use a custom or ignored event
-      
-      // Store Refresh Token in cookie
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: config.env === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-      });
 
-      // Store Access Token in cookie for convenience
-      res.cookie('accessToken', accessToken, {
-        httpOnly: true,
-        secure: config.env === 'production',
-        sameSite: 'strict',
-        maxAge: 15 * 60 * 1000 // 15 mins
-      });
-
+      // Send login alert email asynchronously
       if (emailQueue) {
         await emailQueue.add('login_alert_email', {
           type: 'login_alert',
-          data: { user: { name: user.name, email: user.email }, session: { os: device.os, browser: device.browser, ipAddress: device.ipAddress, deviceType: device.deviceType } }
+          data: {
+            user: { name: user.name, email: user.email },
+            session: { os: device.os, browser: device.browser, ipAddress: device.ipAddress, deviceType: device.deviceType }
+          }
         });
       }
 
+      // Set refresh token as httpOnly cookie
+      res.cookie('refreshToken', refreshToken, makeCookieOptions(REFRESH_TOKEN_EXPIRY_MS));
+      
+      // Access token is returned in the response body (not cookie) so the
+      // frontend can attach it to Authorization headers
       return ApiResponse.success(res, {
         accessToken,
         user: {
           id: user._id,
           name: user.name,
           email: user.email,
+          avatar: user.avatar,
           role: user.role,
           plan: user.plan,
           emailVerified: user.emailVerified,
@@ -258,46 +263,49 @@ export class AuthController {
     }
   }
 
-  // ── Token Refresh (with rotation & reuse detection) ───────────────────
+  // ── Token Refresh (with rotation & reuse detection) ──────────────
   static async refresh(req, res, next) {
     try {
-      const oldRefreshToken = req.cookies.refreshToken;
+      const oldRefreshToken = req.cookies?.refreshToken;
       if (!oldRefreshToken) {
         throw new UnauthorizedError('Refresh token is missing');
       }
 
-      // Verify token
       const decoded = await PasetoService.verifyRefreshToken(oldRefreshToken);
       const oldHash = hashToken(oldRefreshToken);
 
-      // Check DB for token
       const tokenDoc = await RefreshToken.findOne({ token: oldHash });
       if (!tokenDoc) {
         throw new UnauthorizedError('Invalid refresh token');
       }
 
-      // Reuse Detection: Token was already used or is revoked!
+      // Reuse Detection: Token was already consumed — possible compromise
       if (tokenDoc.isUsed || tokenDoc.isRevoked) {
-        // Lock user / revoke all sessions as token is compromised
         await Session.updateMany({ userId: decoded.userId }, { isRevoked: true });
         await RefreshToken.updateMany({ userId: decoded.userId }, { isRevoked: true });
-        res.clearCookie('refreshToken');
-        res.clearCookie('accessToken');
-        
-        logger.error(`Compromise Alert: Refresh token reuse detected for User ${decoded.userId}. Revoking all sessions.`);
-        throw new ForbiddenError('Security breach detected. All sessions terminated. Please log in again.');
+        res.clearCookie('refreshToken', { path: '/' });
+
+        await logSecurityEvent({
+          userId: decoded.userId,
+          email: 'unknown',
+          eventType: 'token_reuse',
+          ipAddress: req.ip || 'Unknown',
+          userAgent: req.headers['user-agent'] || 'Unknown'
+        });
+
+        logger.error(`Security Alert: Refresh token reuse detected for user ${decoded.userId}. All sessions revoked.`);
+        throw new ForbiddenError('Security breach detected. All sessions have been terminated. Please log in again.');
       }
 
-      // Check if session itself is revoked
       const session = await Session.findOne({ _id: decoded.sessionId, isRevoked: false });
       if (!session) {
-        throw new UnauthorizedError('Session is invalid or revoked');
+        throw new UnauthorizedError('Session has expired or been revoked');
       }
 
-      // Mark token as used
+      // Mark old token as consumed
       tokenDoc.isUsed = true;
-      
-      // Generate new Refresh Token
+
+      // Generate new refresh token
       const newRefreshToken = await PasetoService.generateRefreshToken({
         userId: decoded.userId,
         sessionId: decoded.sessionId
@@ -307,48 +315,26 @@ export class AuthController {
       tokenDoc.replacedByToken = newHash;
       await tokenDoc.save();
 
-      // Save new token in DB
-      const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000);
-      const newTokenDoc = new RefreshToken({
-        userId: decoded.userId,
-        token: newHash,
-        expiresAt
-      });
-      await newTokenDoc.save();
+      const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS);
+      await RefreshToken.create({ userId: decoded.userId, token: newHash, expiresAt });
 
-      // Update session's token hash
       session.refreshTokHash = newHash;
+      session.lastActive = new Date();
       await session.save();
 
       const user = await User.findById(decoded.userId);
-      if (!user) {
-        throw new UnauthorizedError('User not found');
-      }
+      if (!user) throw new UnauthorizedError('User not found');
 
-      // Generate new Access Token
       const accessToken = await PasetoService.generateAccessToken({
-        userId: user._id,
-        sessionId: session._id,
+        userId: user._id.toString(),
+        sessionId: session._id.toString(),
         role: user.role,
         plan: user.plan
       });
 
-      // Update cookies
-      res.cookie('refreshToken', newRefreshToken, {
-        httpOnly: true,
-        secure: config.env === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000
-      });
+      res.cookie('refreshToken', newRefreshToken, makeCookieOptions(REFRESH_TOKEN_EXPIRY_MS));
 
-      res.cookie('accessToken', accessToken, {
-        httpOnly: true,
-        secure: config.env === 'production',
-        sameSite: 'strict',
-        maxAge: 15 * 60 * 1000
-      });
-
-      return ApiResponse.success(res, { accessToken }, 'Tokens rotated successfully');
+      return ApiResponse.success(res, { accessToken }, 'Tokens refreshed successfully');
     } catch (err) {
       next(err);
     }
@@ -360,13 +346,10 @@ export class AuthController {
       if (req.session) {
         req.session.isRevoked = true;
         await req.session.save();
-
-        // Revoke active refresh tokens
         await RefreshToken.updateMany({ token: req.session.refreshTokHash }, { isRevoked: true });
       }
 
-      res.clearCookie('refreshToken');
-      res.clearCookie('accessToken');
+      res.clearCookie('refreshToken', { path: '/' });
 
       return ApiResponse.success(res, null, 'Logged out successfully');
     } catch (err) {
@@ -380,17 +363,15 @@ export class AuthController {
       await Session.updateMany({ userId: req.user._id }, { isRevoked: true });
       await RefreshToken.updateMany({ userId: req.user._id }, { isRevoked: true });
 
-      const logoutEvent = new SecurityEvent({
+      await logSecurityEvent({
         userId: req.user._id,
         email: req.user.email,
         eventType: 'logout_all',
         ipAddress: req.ip || 'Unknown',
         userAgent: req.headers['user-agent'] || 'Unknown'
       });
-      await logoutEvent.save();
 
-      res.clearCookie('refreshToken');
-      res.clearCookie('accessToken');
+      res.clearCookie('refreshToken', { path: '/' });
 
       return ApiResponse.success(res, null, 'All sessions terminated successfully');
     } catch (err) {
@@ -401,18 +382,21 @@ export class AuthController {
   // ── Forgot Password ────────────────────────────────────────────────
   static async forgotPassword(req, res, next) {
     try {
-      const { email } = req.body;
+      const { email } = req.validatedBody;
+
+      // Always return success to prevent email enumeration
+      const successMessage = 'If this email is registered, a password reset link will be sent.';
+
       const user = await User.findOne({ email });
       if (!user) {
-        // To prevent account enumeration, respond with success anyway
-        return ApiResponse.success(res, null, 'If this email is registered, a reset link will be sent.');
+        return ApiResponse.success(res, null, successMessage);
       }
 
       const resetToken = crypto.randomBytes(32).toString('hex');
       const resetHash = hashToken(resetToken);
 
-      user.set('passwordResetHash', resetHash, { strict: false });
-      user.set('passwordResetExpires', Date.now() + 3600 * 1000, { strict: false }); // 1 hour
+      user.passwordResetHash = resetHash;
+      user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
       await user.save();
 
       if (emailQueue) {
@@ -422,7 +406,7 @@ export class AuthController {
         });
       }
 
-      return ApiResponse.success(res, null, 'Password reset link sent to your email.');
+      return ApiResponse.success(res, null, successMessage);
     } catch (err) {
       next(err);
     }
@@ -431,42 +415,46 @@ export class AuthController {
   // ── Reset Password ─────────────────────────────────────────────────
   static async resetPassword(req, res, next) {
     try {
-      const { token, email, password } = req.body;
-      
-      const user = await User.findOne({ email });
+      const { token, email, password } = req.validatedBody;
+
+      // Select password reset fields explicitly (they are select:false)
+      const user = await User.findOne({ email }).select('+passwordResetHash +passwordResetExpires');
       if (!user) {
-        throw new BadRequestError('Invalid reset attempt');
+        throw new BadRequestError('Invalid or expired password reset link');
       }
 
       const resetHash = hashToken(token);
-      
-      const storedHash = user.get('passwordResetHash');
-      const expires = user.get('passwordResetExpires');
 
-      if (!storedHash || storedHash !== resetHash || !expires || expires < Date.now()) {
-        throw new BadRequestError('Invalid or expired password reset token');
+      if (
+        !user.passwordResetHash ||
+        user.passwordResetHash !== resetHash ||
+        !user.passwordResetExpires ||
+        user.passwordResetExpires < new Date()
+      ) {
+        throw new BadRequestError('Invalid or expired password reset link');
       }
 
-      // Reset password
       user.password = password;
-      user.set('passwordResetHash', undefined, { strict: false });
-      user.set('passwordResetExpires', undefined, { strict: false });
-      
-      // Clear sessions for security
-      await Session.updateMany({ userId: user._id }, { isRevoked: true });
-      await RefreshToken.updateMany({ userId: user._id }, { isRevoked: true });
+      user.passwordResetHash = null;
+      user.passwordResetExpires = null;
 
-      const pwEvent = new SecurityEvent({
+      // Revoke all sessions for security
+      await Promise.all([
+        Session.updateMany({ userId: user._id }, { isRevoked: true }),
+        RefreshToken.updateMany({ userId: user._id }, { isRevoked: true })
+      ]);
+
+      await logSecurityEvent({
         userId: user._id,
         email: user.email,
-        eventType: 'password_change',
+        eventType: 'password_reset',
         ipAddress: req.ip || 'Unknown',
         userAgent: req.headers['user-agent'] || 'Unknown'
       });
-      await pwEvent.save();
+
       await user.save();
 
-      return ApiResponse.success(res, null, 'Password reset successfully. Please log in with your new password.');
+      return ApiResponse.success(res, null, 'Password has been reset. Please log in with your new password.');
     } catch (err) {
       next(err);
     }
@@ -475,46 +463,47 @@ export class AuthController {
   // ── Change Password (Authenticated) ──────────────────────────────
   static async changePassword(req, res, next) {
     try {
-      const { oldPassword, newPassword } = req.body;
-      
-      // Fetch user with password field
+      const { oldPassword, newPassword } = req.validatedBody;
+
       const user = await User.findById(req.user._id).select('+password');
       if (!user || !(await user.comparePassword(oldPassword))) {
-        throw new BadRequestError('Invalid current password');
+        throw new BadRequestError('Current password is incorrect');
       }
 
       user.password = newPassword;
       await user.save();
 
-      // Terminate other sessions
-      await Session.updateMany({ userId: user._id, _id: { $ne: req.session._id } }, { isRevoked: true });
-      await RefreshToken.updateMany({ userId: user._id, token: { $ne: req.session.refreshTokHash } }, { isRevoked: true });
+      // Revoke all other sessions (keep current)
+      const currentSessionId = req.session?._id;
+      await Promise.all([
+        Session.updateMany({ userId: user._id, _id: { $ne: currentSessionId } }, { isRevoked: true }),
+        RefreshToken.updateMany({
+          userId: user._id,
+          token: { $ne: req.session?.refreshTokHash }
+        }, { isRevoked: true })
+      ]);
 
-      const pwEvent = new SecurityEvent({
+      await logSecurityEvent({
         userId: user._id,
         email: user.email,
         eventType: 'password_change',
         ipAddress: req.ip || 'Unknown',
         userAgent: req.headers['user-agent'] || 'Unknown'
       });
-      await pwEvent.save();
 
-      return ApiResponse.success(res, null, 'Password changed successfully');
+      return ApiResponse.success(res, null, 'Password changed successfully. Other sessions have been terminated.');
     } catch (err) {
       next(err);
     }
   }
 
-  // ── Verify Email ───────────────────────────────────────────────────
+  // ── Verify Email (via POST body — token never in query string) ─────
   static async verifyEmail(req, res, next) {
     try {
-      const { token, email } = req.query;
+      const { token, email } = req.validatedBody;
 
-      if (!token || !email) {
-        throw new BadRequestError('Token and email parameters are required');
-      }
-
-      const user = await User.findOne({ email });
+      // Select verification fields (select:false)
+      const user = await User.findOne({ email }).select('+emailVerifyHash +emailVerifyExpires');
       if (!user) {
         throw new NotFoundError('User not found');
       }
@@ -524,16 +513,19 @@ export class AuthController {
       }
 
       const hash = hashToken(token);
-      const storedHash = user.get('emailVerifyHash');
-      const expires = user.get('emailVerifyExpires');
 
-      if (!storedHash || storedHash !== hash || !expires || expires < Date.now()) {
-        throw new BadRequestError('Invalid or expired email verification link');
+      if (
+        !user.emailVerifyHash ||
+        user.emailVerifyHash !== hash ||
+        !user.emailVerifyExpires ||
+        user.emailVerifyExpires < new Date()
+      ) {
+        throw new BadRequestError('Invalid or expired email verification link. Please request a new one.');
       }
 
       user.emailVerified = true;
-      user.set('emailVerifyHash', undefined, { strict: false });
-      user.set('emailVerifyExpires', undefined, { strict: false });
+      user.emailVerifyHash = null;
+      user.emailVerifyExpires = null;
       await user.save();
 
       return ApiResponse.success(res, null, 'Email verified successfully!');
@@ -546,20 +538,20 @@ export class AuthController {
   static async resendVerification(req, res, next) {
     try {
       const { email } = req.body;
-      const user = await User.findOne({ email });
-      if (!user) {
-        throw new NotFoundError('User not found');
-      }
 
-      if (user.emailVerified) {
-        throw new BadRequestError('Email is already verified');
+      // Always respond with success to prevent email enumeration
+      const successMessage = 'If this email is registered and unverified, a new verification link has been sent.';
+
+      const user = await User.findOne({ email }).select('+emailVerifyHash +emailVerifyExpires');
+      if (!user || user.emailVerified) {
+        return ApiResponse.success(res, null, successMessage);
       }
 
       const verifyToken = crypto.randomBytes(32).toString('hex');
       const verifyTokenHash = hashToken(verifyToken);
 
-      user.set('emailVerifyHash', verifyTokenHash, { strict: false });
-      user.set('emailVerifyExpires', Date.now() + 24 * 3600 * 1000, { strict: false });
+      user.emailVerifyHash = verifyTokenHash;
+      user.emailVerifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
       await user.save();
 
       if (emailQueue) {
@@ -569,7 +561,7 @@ export class AuthController {
         });
       }
 
-      return ApiResponse.success(res, null, 'Verification email sent');
+      return ApiResponse.success(res, null, successMessage);
     } catch (err) {
       next(err);
     }
@@ -579,25 +571,85 @@ export class AuthController {
   static async deactivate(req, res, next) {
     try {
       const user = await User.findById(req.user._id);
-      if (!user) {
-        throw new NotFoundError('User not found');
-      }
+      if (!user) throw new NotFoundError('User not found');
 
       user.status = 'deactivated';
       await user.save();
 
-      // Kill active sessions
-      await Session.updateMany({ userId: user._id }, { isRevoked: true });
-      await RefreshToken.updateMany({ userId: user._id }, { isRevoked: true });
+      await Promise.all([
+        Session.updateMany({ userId: user._id }, { isRevoked: true }),
+        RefreshToken.updateMany({ userId: user._id }, { isRevoked: true })
+      ]);
 
-      res.clearCookie('refreshToken');
-      res.clearCookie('accessToken');
+      await logSecurityEvent({
+        userId: user._id,
+        email: user.email,
+        eventType: 'account_deactivated',
+        ipAddress: req.ip || 'Unknown',
+        userAgent: req.headers['user-agent'] || 'Unknown'
+      });
+
+      res.clearCookie('refreshToken', { path: '/' });
 
       return ApiResponse.success(res, null, 'Account deactivated successfully');
     } catch (err) {
       next(err);
     }
   }
+
+  // ── Get Active Sessions ────────────────────────────────────────────
+  static async getSessions(req, res, next) {
+    try {
+      const sessions = await Session.find({
+        userId: req.user._id,
+        isRevoked: false,
+        expiresAt: { $gt: new Date() }
+      }).sort({ createdAt: -1 });
+
+      const sanitized = sessions.map(s => ({
+        id: s._id,
+        browser: s.browser,
+        os: s.os,
+        deviceType: s.deviceType,
+        ipAddress: s.ipAddress,
+        lastActive: s.lastActive,
+        createdAt: s.createdAt,
+        isCurrent: req.session?._id?.toString() === s._id.toString()
+      }));
+
+      return ApiResponse.success(res, sanitized, 'Active sessions retrieved');
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ── Revoke Specific Session ────────────────────────────────────────
+  static async revokeSession(req, res, next) {
+    try {
+      const { sessionId } = req.params;
+
+      const session = await Session.findOne({ _id: sessionId, userId: req.user._id });
+      if (!session) throw new NotFoundError('Session not found');
+
+      session.isRevoked = true;
+      await session.save();
+
+      await RefreshToken.updateMany({ token: session.refreshTokHash }, { isRevoked: true });
+
+      return ApiResponse.success(res, null, 'Session revoked successfully');
+    } catch (err) {
+      next(err);
+    }
+  }
+}
+
+/**
+ * Timing-safe delay to prevent user enumeration via response time differences.
+ * Simulates a bcrypt comparison when no user is found.
+ */
+async function bcryptTimingDelay() {
+  // Approximately equal to bcrypt compare time at cost 12
+  await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 100));
 }
 
 export default AuthController;

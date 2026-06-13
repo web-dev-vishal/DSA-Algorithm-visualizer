@@ -3,111 +3,162 @@ import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
-import xss from 'xss-clean';
 import compression from 'compression';
-import path from 'path';
-import fs from 'fs';
 import mongoose from 'mongoose';
-import Redis from 'ioredis';
 
 import config from './config/index.js';
 import apiRoutes from './routes/index.js';
 import { errorHandler } from './middlewares/error.js';
 import { generalLimiter } from './middlewares/rateLimiter.js';
+import { correlationId } from './middlewares/correlationId.js';
 import { ApiResponse } from './utils/apiResponse.js';
+import logger from './utils/logger.js';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './docs/swagger.js';
 
+// Import the shared Redis singleton (created once in queue.js)
+import { redisConnection } from './queues/queue.js';
+
 const app = express();
 
-// 1. Basic security headers
-app.use(helmet());
+// ── 1. Correlation ID (must be first) ────────────────────────────────
+app.use(correlationId);
 
-// 2. CORS configuration (allow credentials & target client url)
-app.use(cors({
-  origin: config.clientUrl,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+// ── 2. Security headers ───────────────────────────────────────────────
+app.use(helmet({
+  crossOriginEmbedderPolicy: false, // Allow embedding visualizations
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https://api.dicebear.com', 'https://res.cloudinary.com'],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameSrc: ["'none'"]
+    }
+  }
 }));
 
-// 3. Request parsing & cookie handling
-app.use(express.json({ limit: '10kb' })); // Mitigate DOS by restricting JSON size
+// Clickjacking protection
+app.use(helmet.frameguard({ action: 'deny' }));
+
+// ── 3. CORS ───────────────────────────────────────────────────────────
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (server-to-server, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (origin === config.clientUrl) return callback(null, true);
+    callback(new Error(`CORS: Origin '${origin}' is not allowed`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-Request-ID'],
+  exposedHeaders: ['X-Request-ID']
+}));
+
+// ── 4. Request parsing ────────────────────────────────────────────────
+app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser(config.cookieSecret));
 
-// 4. Data sanitization against NoSQL query injection
-app.use(mongoSanitize());
+// ── 5. NoSQL injection sanitization ──────────────────────────────────
+app.use(mongoSanitize({
+  replaceWith: '_', // Replace $ and . with _ instead of stripping
+  onSanitize: ({ req, key }) => {
+    logger.warn('Sanitized NoSQL injection attempt', {
+      path: req.path,
+      key,
+      ip: req.ip,
+      correlationId: req.correlationId
+    });
+  }
+}));
 
-// 5. Data sanitization against XSS (HTML scripting injection)
-app.use(xss());
+// ── 6. NOTE: xss-clean removed (unmaintained, MED-09 fix) ────────────
+// XSS prevention is handled by:
+//   - helmet CSP headers (output encoding)
+//   - Zod validation transforming all inputs
+//   - mongoose schema validation
 
-// 6. Gzip compression
+// ── 7. Compression ────────────────────────────────────────────────────
 app.use(compression());
 
-// 7. General rate limiting for entire application API
+// ── 8. Request logging middleware ─────────────────────────────────────
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const logLevel = res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'debug';
+    logger[logLevel](`${req.method} ${req.originalUrl}`, {
+      status: res.statusCode,
+      duration: `${duration}ms`,
+      ip: req.ip,
+      correlationId: req.correlationId,
+      userId: req.user?._id?.toString()
+    });
+  });
+  next();
+});
+
+// ── 9. General rate limiting ──────────────────────────────────────────
 app.use('/api', generalLimiter);
 
-// 8. Serve temporary uploads folder statically (e.g. for mock file uploads)
-const uploadsPath = path.join(process.cwd(), 'src', 'uploads');
-if (!fs.existsSync(uploadsPath)) {
-  fs.mkdirSync(uploadsPath, { recursive: true });
-}
-app.use('/uploads', express.static(uploadsPath));
-
-// 9. Central Health Check Endpoint (checks DB + Redis connectivity)
+// ── 10. Health Check ──────────────────────────────────────────────────
+// Uses the shared Redis connection — does NOT create a new connection per request (CRIT-05 fix)
 app.get('/health', async (req, res) => {
   const health = {
-    uptime: process.uptime(),
-    timestamp: Date.now(),
+    uptime: Math.round(process.uptime()),
+    timestamp: new Date().toISOString(),
     env: config.env,
+    version: process.env.npm_package_version || '1.0.0',
     database: 'disconnected',
     redis: 'disconnected'
   };
 
-  try {
-    if (mongoose.connection.readyState === 1) {
-      health.database = 'connected';
-    }
-  } catch (err) {
-    health.database = `error: ${err.message}`;
+  // Check MongoDB
+  if (mongoose.connection.readyState === 1) {
+    health.database = 'connected';
   }
 
+  // Check Redis using the shared singleton connection
   try {
-    const redis = new Redis(config.redisUrl, { maxRetriesPerRequest: 1, connectTimeout: 1000 });
-    const ping = await redis.ping();
-    if (ping === 'PONG') {
-      health.redis = 'connected';
+    if (redisConnection && redisConnection.status === 'ready') {
+      const ping = await redisConnection.ping();
+      health.redis = ping === 'PONG' ? 'connected' : 'degraded';
     }
-    redis.disconnect();
-  } catch (err) {
-    health.redis = `error: ${err.message}`;
+  } catch {
+    health.redis = 'error';
   }
 
-  const isHealthy = health.database === 'connected' && (config.env === 'test' || health.redis === 'connected');
+  const isHealthy =
+    health.database === 'connected' &&
+    (config.env === 'test' || health.redis === 'connected');
+
   return res.status(isHealthy ? 200 : 503).json(
-    new ApiResponse(isHealthy ? 200 : 503, health, isHealthy ? 'System is healthy' : 'System is degraded')
+    new ApiResponse(isHealthy ? 200 : 503, health, isHealthy ? 'Healthy' : 'Degraded')
   );
 });
 
-// 10. Swagger Docs integration
+// ── 11. Swagger / API Documentation ──────────────────────────────────
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/docs.json', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
 });
 
-// 11. Core Routing Registration
+// ── 12. API Routes ────────────────────────────────────────────────────
 app.use('/api/v1', apiRoutes);
 
-// 12. Handle 404 routes
-app.use('*', (req, res, next) => {
+// ── 13. 404 Handler ───────────────────────────────────────────────────
+app.use('*', (req, res) => {
   res.status(404).json(
-    new ApiResponse(404, null, `Path ${req.originalUrl} not found`)
+    new ApiResponse(404, null, `Route ${req.method} ${req.originalUrl} not found`)
   );
 });
 
-// 13. Centralized Error Middleware (must be registered last!)
+// ── 14. Centralized error handler (must be last) ──────────────────────
 app.use(errorHandler);
 
 export default app;

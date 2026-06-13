@@ -8,12 +8,22 @@ const SecurityEventSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    trim: true,
-    lowercase: true
+    required: true
   },
   eventType: {
     type: String,
-    enum: ['failed_login', 'lockout', 'password_change', 'mfa_enabled', 'suspicious_login', 'logout_all'],
+    enum: [
+      'login',           // Successful login
+      'failed_login',    // Failed login attempt
+      'logout',          // User-initiated logout
+      'logout_all',      // All-sessions logout
+      'lockout',         // Account locked due to too many failures
+      'password_change', // Password was changed
+      'password_reset',  // Password was reset via forgot-password flow
+      'token_reuse',     // Refresh token reuse detected (compromise alert)
+      'account_deactivated', // Account self-deactivated
+      'suspicious_activity'  // Generic suspicious activity
+    ],
     required: true
   },
   ipAddress: {
@@ -24,21 +34,20 @@ const SecurityEventSchema = new mongoose.Schema({
     type: String,
     default: 'Unknown'
   },
-  location: {
-    type: String,
-    default: 'Unknown'
-  },
-  riskScore: {
-    type: Number,
-    default: 0
+  metadata: {
+    type: Map,
+    of: String,
+    default: {}
   }
 }, {
   timestamps: true
 });
 
-SecurityEventSchema.index({ userId: 1 });
-SecurityEventSchema.index({ eventType: 1 });
-SecurityEventSchema.index({ createdAt: -1 });
+// ── Indexes ───────────────────────────────────────────────────────────
+SecurityEventSchema.index({ userId: 1, createdAt: -1 }); // User security timeline
+SecurityEventSchema.index({ eventType: 1 });             // Filter by event type
+SecurityEventSchema.index({ ipAddress: 1 });             // IP-based analysis
+SecurityEventSchema.index({ createdAt: -1 });            // Global timeline
 
 const SecurityEvent = mongoose.model('SecurityEvent', SecurityEventSchema);
 export default SecurityEvent;

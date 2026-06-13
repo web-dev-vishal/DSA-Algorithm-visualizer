@@ -4,6 +4,10 @@
   "description": "Production-grade, enterprise backend for DSA Algorithm Visualizer",
   "main": "src/server.js",
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
@@ -24,14 +28,14 @@
     "ioredis": "^5.4.1",
     "mongoose": "^8.4.1",
     "multer": "^1.4.5-lts.1",
-    "nodemailer": "^6.9.13",
+    "nodemailer": "^8.0.11",
     "paseto": "^3.1.4",
     "socket.io": "^4.7.5",
     "swagger-ui-express": "^5.0.1",
-    "xss-clean": "^0.1.4",
-    "zod": "^3.23.8",
+    "uuid": "^11.1.1",
     "winston": "^3.13.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "jest": "^29.7.0",

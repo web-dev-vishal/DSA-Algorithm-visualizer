@@ -7,27 +7,28 @@ import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { Skeleton } from "./components/ui/Skeleton";
 import { useAuth } from "./hooks/useAuth";
 
-// ── Marketing pages ────────────────────────────────────────────────
-const HomePage     = lazy(() => import("./pages/marketing/HomePage").then(m => ({ default: m.HomePage })));
-const PricingPage  = lazy(() => import("./pages/marketing/PricingPage").then(m => ({ default: m.PricingPage })));
-const FeaturesPage = lazy(() => import("./pages/marketing/FeaturesPage").then(m => ({ default: m.FeaturesPage })));
+// ── Marketing pages ──────────────────────────────────────────────────
+const HomePage      = lazy(() => import("./pages/marketing/HomePage").then(m => ({ default: m.HomePage })));
+const PricingPage   = lazy(() => import("./pages/marketing/PricingPage").then(m => ({ default: m.PricingPage })));
+const FeaturesPage  = lazy(() => import("./pages/marketing/FeaturesPage").then(m => ({ default: m.FeaturesPage })));
 const SolutionsPage = lazy(() => import("./pages/marketing/SolutionsPage").then(m => ({ default: m.SolutionsPage })));
-const AboutPage    = lazy(() => import("./pages/marketing/AboutPage").then(m => ({ default: m.AboutPage })));
-const ContactPage  = lazy(() => import("./pages/marketing/ContactPage").then(m => ({ default: m.ContactPage })));
-const BlogPage     = lazy(() => import("./pages/marketing/BlogPage").then(m => ({ default: m.BlogPage })));
-const DocsPage     = lazy(() => import("./pages/marketing/DocsPage").then(m => ({ default: m.DocsPage })));
-const PrivacyPage  = lazy(() => import("./pages/marketing/PrivacyPage").then(m => ({ default: m.PrivacyPage })));
-const TermsPage    = lazy(() => import("./pages/marketing/TermsPage").then(m => ({ default: m.TermsPage })));
-const NotFoundPage = lazy(() => import("./pages/marketing/NotFoundPage").then(m => ({ default: m.NotFoundPage })));
+const AboutPage     = lazy(() => import("./pages/marketing/AboutPage").then(m => ({ default: m.AboutPage })));
+const ContactPage   = lazy(() => import("./pages/marketing/ContactPage").then(m => ({ default: m.ContactPage })));
+const BlogPage      = lazy(() => import("./pages/marketing/BlogPage").then(m => ({ default: m.BlogPage })));
+const DocsPage      = lazy(() => import("./pages/marketing/DocsPage").then(m => ({ default: m.DocsPage })));
+const PrivacyPage   = lazy(() => import("./pages/marketing/PrivacyPage").then(m => ({ default: m.PrivacyPage })));
+const TermsPage     = lazy(() => import("./pages/marketing/TermsPage").then(m => ({ default: m.TermsPage })));
+const NotFoundPage  = lazy(() => import("./pages/marketing/NotFoundPage").then(m => ({ default: m.NotFoundPage })));
 
-// ── Auth pages ─────────────────────────────────────────────────────
-const LoginPage    = lazy(() => import("./pages/auth/LoginPage").then(m => ({ default: m.LoginPage })));
-const SignupPage   = lazy(() => import("./pages/auth/SignupPage").then(m => ({ default: m.SignupPage })));
+// ── Auth pages ───────────────────────────────────────────────────────
+const LoginPage          = lazy(() => import("./pages/auth/LoginPage").then(m => ({ default: m.LoginPage })));
+const SignupPage          = lazy(() => import("./pages/auth/SignupPage").then(m => ({ default: m.SignupPage })));
+const ForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage").then(m => ({ default: m.ForgotPasswordPage })));
 
-// ── Onboarding ─────────────────────────────────────────────────────
+// ── Onboarding ───────────────────────────────────────────────────────
 const OnboardingPage = lazy(() => import("./pages/onboarding/OnboardingPage").then(m => ({ default: m.OnboardingPage })));
 
-// ── Dashboard pages ────────────────────────────────────────────────
+// ── Dashboard pages ──────────────────────────────────────────────────
 const DashboardHome  = lazy(() => import("./pages/dashboard/DashboardHome").then(m => ({ default: m.DashboardHome })));
 const AnalyticsPage  = lazy(() => import("./pages/dashboard/AnalyticsPage").then(m => ({ default: m.AnalyticsPage })));
 const HistoryPage    = lazy(() => import("./pages/dashboard/HistoryPage").then(m => ({ default: m.HistoryPage })));
@@ -36,10 +37,10 @@ const BillingPage    = lazy(() => import("./pages/dashboard/BillingPage").then(m
 const TeamPage       = lazy(() => import("./pages/dashboard/TeamPage").then(m => ({ default: m.TeamPage })));
 const SettingsPage   = lazy(() => import("./pages/dashboard/SettingsPage").then(m => ({ default: m.SettingsPage })));
 
-// ── The original App (visualizer) ─────────────────────────────────
+// ── Visualizer app ───────────────────────────────────────────────────
 const VisualizerApp = lazy(() => import("./components/AppTailwind").then(m => ({ default: m.default })));
 
-// ── Helpers ────────────────────────────────────────────────────────
+// ── Page loader skeleton ─────────────────────────────────────────────
 function PageLoader(): ReactElement {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-8 space-y-4">
@@ -52,14 +53,26 @@ function PageLoader(): ReactElement {
   );
 }
 
+// ── Auth guard ───────────────────────────────────────────────────────
 function RequireAuth({ children }: { children: React.ReactNode }): ReactElement {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
-  if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
   return <>{children}</>;
 }
 
-// ── Dark mode ──────────────────────────────────────────────────────
+// ── Redirect authenticated users away from auth pages ────────────────
+function RedirectIfAuthenticated({ children }: { children: React.ReactNode }): ReactElement {
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+}
+
+// ── Dark mode ────────────────────────────────────────────────────────
 function getInitialDark(): boolean {
   try {
     const stored = localStorage.getItem("algviz_dark");
@@ -72,7 +85,7 @@ function applyDark(dark: boolean): void {
   document.documentElement.classList.toggle("dark", dark);
 }
 
-// ── Marketing layout ───────────────────────────────────────────────
+// ── Layout wrappers ──────────────────────────────────────────────────
 function MarketingLayout({ children }: { children: React.ReactNode }): ReactElement {
   return (
     <>
@@ -83,8 +96,11 @@ function MarketingLayout({ children }: { children: React.ReactNode }): ReactElem
   );
 }
 
-// ── Dashboard layout wrapper ───────────────────────────────────────
-function DashboardWrapper({ children, darkMode, onToggleDark }: { children: React.ReactNode; darkMode: boolean; onToggleDark: () => void }): ReactElement {
+function DashboardWrapper({ children, darkMode, onToggleDark }: {
+  children: React.ReactNode;
+  darkMode: boolean;
+  onToggleDark: () => void;
+}): ReactElement {
   return (
     <RequireAuth>
       <DashboardLayout darkMode={darkMode} onToggleDark={onToggleDark}>
@@ -94,7 +110,7 @@ function DashboardWrapper({ children, darkMode, onToggleDark }: { children: Reac
   );
 }
 
-// ── Root ───────────────────────────────────────────────────────────
+// ── Root router ──────────────────────────────────────────────────────
 export function AppRouter(): ReactElement {
   const [darkMode, setDarkMode] = useState(getInitialDark);
 
@@ -104,9 +120,7 @@ export function AppRouter(): ReactElement {
   }, [darkMode]);
 
   useEffect(() => {
-    const handleSync = (): void => {
-      setDarkMode(getInitialDark());
-    };
+    const handleSync = (): void => { setDarkMode(getInitialDark()); };
     window.addEventListener("storage", handleSync);
     return () => window.removeEventListener("storage", handleSync);
   }, []);
@@ -116,92 +130,72 @@ export function AppRouter(): ReactElement {
   return (
     <BrowserRouter>
       <Routes>
-        {/* ── Marketing ──────────────────────────── */}
-        <Route path="/" element={<MarketingLayout><HomePage /></MarketingLayout>} />
-        <Route path="/features" element={<MarketingLayout><FeaturesPage /></MarketingLayout>} />
-        <Route path="/pricing"  element={<MarketingLayout><PricingPage /></MarketingLayout>} />
-        <Route path="/about"    element={<MarketingLayout><AboutPage /></MarketingLayout>} />
-        <Route path="/contact"  element={<MarketingLayout><ContactPage /></MarketingLayout>} />
-        <Route path="/blog"     element={<MarketingLayout><BlogPage /></MarketingLayout>} />
-        <Route path="/blog/:slug" element={<MarketingLayout><BlogPage /></MarketingLayout>} />
-        <Route path="/docs"     element={<MarketingLayout><DocsPage /></MarketingLayout>} />
-        <Route path="/api-docs" element={<MarketingLayout><DocsPage /></MarketingLayout>} />
-        <Route path="/privacy"  element={<MarketingLayout><PrivacyPage /></MarketingLayout>} />
-        <Route path="/terms"    element={<MarketingLayout><TermsPage /></MarketingLayout>} />
-        <Route path="/cookies"  element={<MarketingLayout><PrivacyPage /></MarketingLayout>} />
-        <Route path="/security" element={<MarketingLayout><FeaturesPage /></MarketingLayout>} />
-        <Route path="/solutions" element={<MarketingLayout><SolutionsPage /></MarketingLayout>} />
-        <Route path="/integrations" element={<MarketingLayout><FeaturesPage /></MarketingLayout>} />
-        <Route path="/careers"  element={<MarketingLayout><AboutPage /></MarketingLayout>} />
-        <Route path="/partners" element={<MarketingLayout><AboutPage /></MarketingLayout>} />
-        <Route path="/help"     element={<MarketingLayout><DocsPage /></MarketingLayout>} />
-        <Route path="/status"   element={<MarketingLayout><ContactPage /></MarketingLayout>} />
-        <Route path="/stories"  element={<MarketingLayout><BlogPage /></MarketingLayout>} />
-        <Route path="/gdpr"     element={<MarketingLayout><PrivacyPage /></MarketingLayout>} />
-        <Route path="/changelog" element={<MarketingLayout><BlogPage /></MarketingLayout>} />
+        {/* ── Marketing ──────────────────────────────────────────── */}
+        <Route path="/"            element={<MarketingLayout><HomePage /></MarketingLayout>} />
+        <Route path="/features"    element={<MarketingLayout><FeaturesPage /></MarketingLayout>} />
+        <Route path="/pricing"     element={<MarketingLayout><PricingPage /></MarketingLayout>} />
+        <Route path="/solutions"   element={<MarketingLayout><SolutionsPage /></MarketingLayout>} />
+        <Route path="/about"       element={<MarketingLayout><AboutPage /></MarketingLayout>} />
+        <Route path="/contact"     element={<MarketingLayout><ContactPage /></MarketingLayout>} />
+        <Route path="/blog"        element={<MarketingLayout><BlogPage /></MarketingLayout>} />
+        <Route path="/blog/:slug"  element={<MarketingLayout><BlogPage /></MarketingLayout>} />
+        <Route path="/docs"        element={<MarketingLayout><DocsPage /></MarketingLayout>} />
+        <Route path="/privacy"     element={<MarketingLayout><PrivacyPage /></MarketingLayout>} />
+        <Route path="/terms"       element={<MarketingLayout><TermsPage /></MarketingLayout>} />
+        <Route path="/cookies"     element={<MarketingLayout><PrivacyPage /></MarketingLayout>} />
+        <Route path="/gdpr"        element={<MarketingLayout><PrivacyPage /></MarketingLayout>} />
 
-        {/* ── Auth ───────────────────────────────── */}
-        <Route path="/login"  element={<Suspense fallback={<PageLoader />}><LoginPage /></Suspense>} />
-        <Route path="/signup" element={<Suspense fallback={<PageLoader />}><SignupPage /></Suspense>} />
-        <Route path="/forgot-password" element={<Suspense fallback={<PageLoader />}><LoginPage /></Suspense>} />
+        {/* These routes now point to contextually correct pages */}
+        <Route path="/security"      element={<MarketingLayout><FeaturesPage /></MarketingLayout>} />
+        <Route path="/integrations"  element={<MarketingLayout><FeaturesPage /></MarketingLayout>} />
+        <Route path="/careers"       element={<MarketingLayout><AboutPage /></MarketingLayout>} />
+        <Route path="/partners"      element={<MarketingLayout><AboutPage /></MarketingLayout>} />
+        <Route path="/help"          element={<MarketingLayout><DocsPage /></MarketingLayout>} />
+        <Route path="/api-docs"      element={<MarketingLayout><DocsPage /></MarketingLayout>} />
+        <Route path="/status"        element={<MarketingLayout><ContactPage /></MarketingLayout>} />
+        <Route path="/stories"       element={<MarketingLayout><BlogPage /></MarketingLayout>} />
+        <Route path="/changelog"     element={<MarketingLayout><BlogPage /></MarketingLayout>} />
 
-        {/* ── Onboarding ─────────────────────────── */}
+        {/* ── Auth (redirect if already authenticated) ──────────── */}
+        <Route path="/login" element={
+          <RedirectIfAuthenticated>
+            <Suspense fallback={<PageLoader />}><LoginPage /></Suspense>
+          </RedirectIfAuthenticated>
+        } />
+        <Route path="/signup" element={
+          <RedirectIfAuthenticated>
+            <Suspense fallback={<PageLoader />}><SignupPage /></Suspense>
+          </RedirectIfAuthenticated>
+        } />
+        <Route path="/forgot-password" element={
+          <Suspense fallback={<PageLoader />}><ForgotPasswordPage /></Suspense>
+        } />
+
+        {/* ── Onboarding ─────────────────────────────────────────── */}
         <Route path="/onboarding" element={
           <RequireAuth>
             <Suspense fallback={<PageLoader />}><OnboardingPage /></Suspense>
           </RequireAuth>
         } />
 
-        {/* ── Visualizer app (with marketing layout for same UI feel) ──── */}
+        {/* ── Visualizer (public) ────────────────────────────────── */}
         <Route path="/app" element={
           <MarketingLayout>
             <VisualizerApp />
           </MarketingLayout>
         } />
 
-        {/* ── Dashboard ──────────────────────────── */}
-        <Route path="/dashboard" element={
-          <DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}>
-            <DashboardHome />
-          </DashboardWrapper>
-        } />
-        <Route path="/dashboard/billing" element={
-          <DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}>
-            <BillingPage />
-          </DashboardWrapper>
-        } />
-        <Route path="/dashboard/team" element={
-          <DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}>
-            <TeamPage />
-          </DashboardWrapper>
-        } />
-        <Route path="/dashboard/settings" element={
-          <DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}>
-            <SettingsPage />
-          </DashboardWrapper>
-        } />
-        <Route path="/dashboard/analytics" element={
-          <DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}>
-            <AnalyticsPage />
-          </DashboardWrapper>
-        } />
-        <Route path="/dashboard/history" element={
-          <DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}>
-            <HistoryPage />
-          </DashboardWrapper>
-        } />
-        <Route path="/dashboard/api" element={
-          <DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}>
-            <APIPage />
-          </DashboardWrapper>
-        } />
-        <Route path="/dashboard/security" element={
-          <DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}>
-            <SettingsPage defaultTab="security" />
-          </DashboardWrapper>
-        } />
+        {/* ── Dashboard (protected) ─────────────────────────────── */}
+        <Route path="/dashboard" element={<DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}><DashboardHome /></DashboardWrapper>} />
+        <Route path="/dashboard/billing"   element={<DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}><BillingPage /></DashboardWrapper>} />
+        <Route path="/dashboard/team"      element={<DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}><TeamPage /></DashboardWrapper>} />
+        <Route path="/dashboard/settings"  element={<DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}><SettingsPage /></DashboardWrapper>} />
+        <Route path="/dashboard/analytics" element={<DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}><AnalyticsPage /></DashboardWrapper>} />
+        <Route path="/dashboard/history"   element={<DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}><HistoryPage /></DashboardWrapper>} />
+        <Route path="/dashboard/api"       element={<DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}><APIPage /></DashboardWrapper>} />
+        <Route path="/dashboard/security"  element={<DashboardWrapper darkMode={darkMode} onToggleDark={toggleDark}><SettingsPage defaultTab="security" /></DashboardWrapper>} />
 
-        {/* ── 404 ────────────────────────────────── */}
+        {/* ── 404 ────────────────────────────────────────────────── */}
         <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFoundPage /></Suspense>} />
       </Routes>
     </BrowserRouter>

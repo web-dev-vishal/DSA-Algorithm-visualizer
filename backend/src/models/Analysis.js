@@ -23,6 +23,12 @@ const AnalysisSchema = new mongoose.Schema({
     ref: 'User',
     default: null
   },
+  // SHA-256 hash of (code + JSON.stringify(defaultInput)) used for fast cache lookups
+  codeHash: {
+    type: String,
+    required: true,
+    index: true
+  },
   code: {
     type: String,
     required: true
@@ -74,9 +80,12 @@ const AnalysisSchema = new mongoose.Schema({
   timestamps: true
 });
 
-AnalysisSchema.index({ userId: 1 });
-AnalysisSchema.index({ category: 1 });
-AnalysisSchema.index({ createdAt: -1 });
+// ── Indexes ───────────────────────────────────────────────────────────
+AnalysisSchema.index({ codeHash: 1 });                     // Cache lookups
+AnalysisSchema.index({ userId: 1, createdAt: -1 });        // User history pagination
+AnalysisSchema.index({ category: 1 });                     // Category filter
+AnalysisSchema.index({ shared: 1 });                       // Public shared lookups
+AnalysisSchema.index({ createdAt: -1 });                   // General sorting
 
 const Analysis = mongoose.model('Analysis', AnalysisSchema);
 export default Analysis;

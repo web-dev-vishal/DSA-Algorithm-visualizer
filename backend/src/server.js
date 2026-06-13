@@ -1,102 +1,119 @@
 import http from 'http';
 import mongoose from 'mongoose';
 import app from './app.js';
-import config from './config/index.js';
+import config, { validateConfig } from './config/index.js';
 import logger from './utils/logger.js';
-import { initSocket } from './sockets/socket.js';
-import { startWorkers } from './jobs/workers.js';
+import { initSocket, closeSocket } from './sockets/socket.js';
+import { startWorkers, closeWorkers } from './jobs/workers.js';
+import { redisConnection, scheduleCleanupJob } from './queues/queue.js';
 
 let server;
+let isShuttingDown = false;
 
 async function bootstrap() {
   try {
-    logger.info('Initializing application database connection...');
-    
-    // Connect to MongoDB
-    await mongoose.connect(config.mongoUri, {
-      autoIndex: true
-    });
-    logger.info('Successfully connected to MongoDB Database');
+    // Validate configuration before starting — fails hard if critical env vars missing
+    validateConfig();
 
-    // Start background job workers
+    logger.info('Connecting to MongoDB...');
+    await mongoose.connect(config.mongoUri, { autoIndex: true });
+    logger.info('MongoDB connected successfully');
+
+    // Start background workers
     startWorkers();
 
-    // Create HTTP Server
-    server = http.createServer(app);
+    // Schedule periodic database cleanup
+    await scheduleCleanupJob();
 
-    // Attach Socket.IO
+    // Create HTTP server and attach Socket.IO
+    server = http.createServer(app);
     initSocket(server);
 
-    // Start Server
     server.listen(config.port, () => {
-      logger.info(`==================================================`);
-      logger.info(`DSA Visualizer Server listening on Port: ${config.port}`);
+      logger.info('='.repeat(50));
+      logger.info(`DSA Visualizer API running on port ${config.port}`);
       logger.info(`Environment: ${config.env}`);
-      logger.info(`API Documentation available at: ${config.clientUrl}/api-docs`);
-      logger.info(`==================================================`);
+      logger.info(`Health check: http://localhost:${config.port}/health`);
+      logger.info(`API docs: http://localhost:${config.port}/api-docs`);
+      logger.info('='.repeat(50));
     });
 
-    // Handle system-wide promise rejections
-    process.on('unhandledRejection', (err) => {
-      logger.error('UNHANDLED REJECTION! Shutting down server gracefully...', err);
-      gracefulShutdown();
+    // ── Process signal handlers ────────────────────────────────────
+    process.on('unhandledRejection', (reason, promise) => {
+      logger.error('Unhandled promise rejection:', { reason, promise });
+      // Don't exit on unhandled rejections — log and continue
     });
 
     process.on('uncaughtException', (err) => {
-      logger.error('UNCAUGHT EXCEPTION! Shutting down server gracefully...', err);
-      gracefulShutdown();
+      logger.error('Uncaught exception — initiating shutdown:', err);
+      gracefulShutdown(1);
     });
 
-    // Listen for terminate signals
     process.on('SIGTERM', () => {
-      logger.info('SIGTERM received. Initiating graceful shutdown...');
-      gracefulShutdown();
+      logger.info('SIGTERM received — initiating graceful shutdown');
+      gracefulShutdown(0);
     });
 
     process.on('SIGINT', () => {
-      logger.info('SIGINT received. Initiating graceful shutdown...');
-      gracefulShutdown();
+      logger.info('SIGINT received — initiating graceful shutdown');
+      gracefulShutdown(0);
     });
 
   } catch (error) {
-    logger.error('Server failed to bootstrap:', error);
+    logger.error('Failed to start server:', error);
     process.exit(1);
   }
 }
 
-function gracefulShutdown() {
-  if (server) {
-    server.close(async () => {
-      logger.info('HTTP server closed.');
-      try {
-        // Disconnect MongoDB connection
-        await mongoose.connection.close();
-        logger.info('Mongoose connections closed.');
-        
-        // Disconnect worker connections if any are active
-        const { default: Redis } = await import('ioredis');
-        const redisClient = new Redis(config.redisUrl);
-        await redisClient.quit();
-        logger.info('Redis connections purged.');
-        
-        logger.info('Graceful shutdown completed successfully. Exiting.');
-        process.exit(0);
-      } catch (err) {
-        logger.error('Error during database cleanup during shutdown:', err);
-        process.exit(1);
-      }
-    });
+async function gracefulShutdown(exitCode = 0) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
 
-    // Force exit after 10s if graceful close stalls
-    setTimeout(() => {
-      logger.error('Could not close server in time, forcing exit.');
-      process.exit(1);
-    }, 10000);
-  } else {
-    process.exit(0);
+  logger.info('Graceful shutdown initiated...');
+
+  // Force exit after 15 seconds if shutdown stalls
+  const forceExitTimer = setTimeout(() => {
+    logger.error('Graceful shutdown timed out — forcing exit');
+    process.exit(1);
+  }, 15_000);
+  forceExitTimer.unref(); // Don't prevent Node from exiting naturally
+
+  try {
+    // 1. Stop accepting new HTTP connections
+    if (server) {
+      await new Promise((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
+      });
+      logger.info('HTTP server closed');
+    }
+
+    // 2. Close Socket.IO
+    await closeSocket();
+    logger.info('Socket.IO closed');
+
+    // 3. Close BullMQ workers
+    await closeWorkers();
+    logger.info('BullMQ workers closed');
+
+    // 4. Close shared Redis connection
+    if (redisConnection) {
+      await redisConnection.quit();
+      logger.info('Redis connection closed');
+    }
+
+    // 5. Close MongoDB
+    await mongoose.connection.close();
+    logger.info('MongoDB connection closed');
+
+    logger.info('Graceful shutdown complete');
+    clearTimeout(forceExitTimer);
+    process.exit(exitCode);
+  } catch (err) {
+    logger.error('Error during shutdown:', err);
+    clearTimeout(forceExitTimer);
+    process.exit(1);
   }
 }
 
-// Execute bootstrap
 bootstrap();
 export default server;

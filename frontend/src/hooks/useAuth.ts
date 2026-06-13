@@ -1,50 +1,82 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { authStore } from "../store/auth";
 import type { User } from "../types";
 
 interface UseAuthReturn {
   user: User | null;
   loading: boolean;
+  error: string | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
+  clearError: () => void;
   isAuthenticated: boolean;
 }
 
 export function useAuth(): UseAuthReturn {
   const [user, setUser] = useState<User | null>(() => authStore.getUser());
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     return authStore.subscribe(setUser);
   }, []);
 
-  async function login(email: string, password: string): Promise<void> {
+  const login = useCallback(async (email: string, password: string): Promise<void> => {
     setLoading(true);
+    setError(null);
     try {
       await authStore.login(email, password);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Login failed. Please try again.";
+      setError(message);
+      throw err; // Re-throw so the calling component can also handle it
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  async function signup(name: string, email: string, password: string): Promise<void> {
+  const signup = useCallback(async (name: string, email: string, password: string): Promise<void> => {
     setLoading(true);
+    setError(null);
     try {
       await authStore.signup(name, email, password);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Registration failed. Please try again.";
+      setError(message);
+      throw err;
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  function logout(): void {
-    authStore.logout();
-  }
+  const logout = useCallback(async (): Promise<void> => {
+    setLoading(true);
+    try {
+      await authStore.logout();
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  function updateUser(updates: Partial<User>): void {
+  const updateUser = useCallback((updates: Partial<User>): void => {
     authStore.updateUser(updates);
-  }
+  }, []);
 
-  return { user, loading, login, signup, logout, updateUser, isAuthenticated: !!user };
+  const clearError = useCallback((): void => {
+    setError(null);
+  }, []);
+
+  return {
+    user,
+    loading,
+    error,
+    login,
+    signup,
+    logout,
+    updateUser,
+    clearError,
+    isAuthenticated: !!user
+  };
 }

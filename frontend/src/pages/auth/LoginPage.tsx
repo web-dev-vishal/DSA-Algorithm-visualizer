@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Zap, AlertCircle } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -9,19 +9,22 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [error, setError] = useState("");
-  const { login, loading } = useAuth();
+  const { login, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Redirect to the page they came from, or dashboard
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? "/dashboard";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    if (!email || !password) { setError("Please fill in all fields."); return; }
+    clearError();
+    if (!email || !password) return;
     try {
       await login(email, password);
-      navigate("/dashboard");
+      navigate(from, { replace: true });
     } catch {
-      setError("Invalid email or password. Try demo@algoviz.pro / any password.");
+      // Error is already set in the auth hook state
     }
   }
 
@@ -49,19 +52,9 @@ export function LoginPage() {
             </div>
           )}
 
-          {/* Social login */}
-          <Button variant="secondary" className="w-full mb-4">
-            Continue with GitHub
-          </Button>
-
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-zinc-100 dark:bg-zinc-800" />
-            <span className="text-xs text-zinc-400">or continue with email</span>
-            <div className="flex-1 h-px bg-zinc-100 dark:bg-zinc-800" />
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <Input
+              id="email"
               label="Email"
               type="email"
               placeholder="you@example.com"
@@ -69,23 +62,31 @@ export function LoginPage() {
               onChange={e => setEmail(e.target.value)}
               autoComplete="email"
               required
+              disabled={loading}
             />
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Password</label>
-                <Link to="/forgot-password" className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 transition-colors">
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                  Password
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 transition-colors"
+                >
                   Forgot password?
                 </Link>
               </div>
               <div className="relative">
                 <input
+                  id="password"
                   type={showPw ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   autoComplete="current-password"
                   required
-                  className="w-full rounded-[10px] border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 px-3 py-2 pr-10 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-all"
+                  disabled={loading}
+                  className="w-full rounded-[10px] border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 px-3 py-2 pr-10 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-all disabled:opacity-60"
                 />
                 <button
                   type="button"
@@ -98,7 +99,14 @@ export function LoginPage() {
               </div>
             </div>
 
-            <Button type="submit" variant="primary" className="w-full" loading={loading}>
+            <Button
+              id="login-submit"
+              type="submit"
+              variant="primary"
+              className="w-full"
+              loading={loading}
+              disabled={!email || !password || loading}
+            >
               Sign in
             </Button>
           </form>
@@ -110,10 +118,6 @@ export function LoginPage() {
             </Link>
           </p>
         </div>
-
-        <p className="text-center text-xs text-zinc-400 dark:text-zinc-600 mt-4">
-          Demo: use any email & password to explore
-        </p>
       </div>
     </div>
   );

@@ -1,40 +1,62 @@
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
 import { BadRequestError } from '../errors/ApiError.js';
 
-const uploadDir = path.join(process.cwd(), 'src', 'uploads');
+// Allowed MIME types and their corresponding extensions
+const ALLOWED_MIME_TYPES = new Map([
+  ['image/jpeg', ['.jpg', '.jpeg']],
+  ['image/png', ['.png']],
+  ['image/gif', ['.gif']],
+  ['image/webp', ['.webp']],
+  ['application/pdf', ['.pdf']]
+]);
 
-// Ensure temporary uploads directory exists
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
-  }
-});
-
+/**
+ * Multer file filter that validates both MIME type AND file extension.
+ * Extension-only checks can be bypassed by renaming files; MIME type
+ * validation reads the Content-Type header reported by the client.
+ *
+ * For maximum security, use the 'file-type' package to inspect magic bytes.
+ */
 const fileFilter = (req, file, cb) => {
-  const allowedExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.pdf'];
+  const allowedMimes = Array.from(ALLOWED_MIME_TYPES.keys());
+  const allowedExtensions = Array.from(ALLOWED_MIME_TYPES.values()).flat();
+
   const ext = path.extname(file.originalname).toLowerCase();
-  
-  if (!allowedExtensions.includes(ext)) {
-    return cb(new BadRequestError(`Unsupported file format. Allowed: ${allowedExtensions.join(', ')}`), false);
+  const mime = file.mimetype.toLowerCase();
+
+  // Validate MIME type
+  if (!allowedMimes.includes(mime)) {
+    return cb(new BadRequestError(
+      `Unsupported file type: ${mime}. Allowed types: ${allowedMimes.join(', ')}`
+    ), false);
   }
-  
+
+  // Validate extension matches reported MIME type
+  const allowedExtsForMime = ALLOWED_MIME_TYPES.get(mime) || [];
+  if (!allowedExtsForMime.includes(ext)) {
+    return cb(new BadRequestError(
+      `File extension '${ext}' does not match the file type '${mime}'`
+    ), false);
+  }
+
   cb(null, true);
 };
+
+/**
+ * Use memory storage — files are passed to Cloudinary instead of
+ * being stored on the application server's filesystem.
+ *
+ * This fixes CRIT-07: user uploads were previously served via express.static,
+ * creating a stored XSS vector. Files must be uploaded to a CDN/object store.
+ */
+const storage = multer.memoryStorage();
 
 export const upload = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 5 * 1024 * 1024, // 5MB maximum
+    files: 1                    // Maximum 1 file per request
   },
   fileFilter
 });

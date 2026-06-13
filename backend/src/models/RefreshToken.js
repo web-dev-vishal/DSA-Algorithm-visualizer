@@ -8,8 +8,7 @@ const RefreshTokenSchema = new mongoose.Schema({
   },
   token: {
     type: String,
-    required: true,
-    unique: true
+    required: true
   },
   expiresAt: {
     type: Date,
@@ -31,9 +30,10 @@ const RefreshTokenSchema = new mongoose.Schema({
   timestamps: true
 });
 
-RefreshTokenSchema.index({ token: 1 }, { unique: true });
-RefreshTokenSchema.index({ userId: 1 });
-RefreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index
+// ── Indexes ───────────────────────────────────────────────────────────
+RefreshTokenSchema.index({ token: 1 });                         // Fast token lookups
+RefreshTokenSchema.index({ userId: 1 });                        // Per-user revocation
+RefreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL auto-cleanup
 
 const RefreshToken = mongoose.model('RefreshToken', RefreshTokenSchema);
 export default RefreshToken;
