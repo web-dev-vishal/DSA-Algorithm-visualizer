@@ -1,0 +1,54 @@
+services:
+  # Express Backend Web Service
+  - type: web
+    name: dsa-visualizer-backend
+    env: docker
+    dockerContext: backend
+    dockerfilePath: Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        fromRedis:
+          name: dsa-visualizer-redis
+          property: connectionString
+      - key: CLIENT_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: PASETO_PRIVATE_KEY
+        sync: false
+      - key: PASETO_PUBLIC_KEY
+        sync: false
+      - key: REFRESH_TOKEN_PRIVATE_KEY
+        sync: false
+      - key: REFRESH_TOKEN_PUBLIC_KEY
+        sync: false
+
+  # Frontend Static Site
+  - type: web
+    name: dsa-visualizer-frontend
+    env: static
+    buildCommand: npm run build
+    publishPath: dist
+    rootDirectory: frontend
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: dsa-visualizer-backend
+          type: web
+          property: url
+          suffix: /api/v1
+
+# Redis private service
+redis:
+  - name: dsa-visualizer-redis
+    plan: free
+    ipAllowList: []
