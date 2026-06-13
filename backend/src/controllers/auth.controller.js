@@ -241,6 +241,7 @@ export class AuthController {
 
       // Set refresh token as httpOnly cookie
       res.cookie('refreshToken', refreshToken, makeCookieOptions(REFRESH_TOKEN_EXPIRY_MS));
+      res.cookie('accessToken', accessToken, makeCookieOptions(ACCESS_TOKEN_EXPIRY_MS));
       
       // Access token is returned in the response body (not cookie) so the
       // frontend can attach it to Authorization headers
@@ -333,6 +334,7 @@ export class AuthController {
       });
 
       res.cookie('refreshToken', newRefreshToken, makeCookieOptions(REFRESH_TOKEN_EXPIRY_MS));
+      res.cookie('accessToken', accessToken, makeCookieOptions(ACCESS_TOKEN_EXPIRY_MS));
 
       return ApiResponse.success(res, { accessToken }, 'Tokens refreshed successfully');
     } catch (err) {
@@ -350,6 +352,7 @@ export class AuthController {
       }
 
       res.clearCookie('refreshToken', { path: '/' });
+      res.clearCookie('accessToken', { path: '/' });
 
       return ApiResponse.success(res, null, 'Logged out successfully');
     } catch (err) {
@@ -372,6 +375,7 @@ export class AuthController {
       });
 
       res.clearCookie('refreshToken', { path: '/' });
+      res.clearCookie('accessToken', { path: '/' });
 
       return ApiResponse.success(res, null, 'All sessions terminated successfully');
     } catch (err) {
@@ -590,6 +594,7 @@ export class AuthController {
       });
 
       res.clearCookie('refreshToken', { path: '/' });
+      res.clearCookie('accessToken', { path: '/' });
 
       return ApiResponse.success(res, null, 'Account deactivated successfully');
     } catch (err) {

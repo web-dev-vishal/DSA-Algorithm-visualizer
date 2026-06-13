@@ -26,8 +26,7 @@ const AnalysisSchema = new mongoose.Schema({
   // SHA-256 hash of (code + JSON.stringify(defaultInput)) used for fast cache lookups
   codeHash: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   code: {
     type: String,

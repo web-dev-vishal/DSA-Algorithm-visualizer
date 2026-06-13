@@ -83,7 +83,7 @@ function SkeletonRow() {
     <tr className="border-b border-zinc-100 dark:border-zinc-850">
       {[...Array(6)].map((_, i) => (
         <td key={i} className="px-5 py-3.5">
-          <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" style={{ width: `${50 + Math.random() * 40}%` }} />
+          <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" style={{ width: `${50 + ((i * 7) % 40)}%` }} />
         </td>
       ))}
     </tr>
@@ -124,7 +124,7 @@ export function DashboardHome(): ReactElement {
     placeholderData: { items: [], total: 0 }
   });
 
-  const analyses = historyData?.items ?? [];
+  const analyses = useMemo(() => historyData?.items ?? [], [historyData?.items]);
 
   function toggleSort(field: typeof sortField) {
     if (sortField === field) {

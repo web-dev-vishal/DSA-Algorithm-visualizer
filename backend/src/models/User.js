@@ -96,7 +96,6 @@ const UserSchema = new mongoose.Schema({
 });
 
 // ── Indexes ──────────────────────────────────────────────────────────
-UserSchema.index({ email: 1 }, { unique: true });
 UserSchema.index({ status: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ plan: 1 });

@@ -37,7 +37,6 @@ const ApiKeySchema = new mongoose.Schema({
   timestamps: true
 });
 
-ApiKeySchema.index({ keyHash: 1 }, { unique: true });
 ApiKeySchema.index({ userId: 1 });
 
 const ApiKey = mongoose.model('ApiKey', ApiKeySchema);
