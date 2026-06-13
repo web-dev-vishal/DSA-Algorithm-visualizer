@@ -1,4 +1,4 @@
-import { AlgorithmAnalysis, VisualizationStep } from "./api";
+import type { AlgorithmAnalysis, VisualizationStep } from "./api";
 
 // Programmatic generators for offline execution traces
 

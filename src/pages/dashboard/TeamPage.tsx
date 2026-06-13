@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { UserPlus, MoreHorizontal, Shield, Crown, User, Mail } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
@@ -23,7 +23,11 @@ const ROLE_CONFIG = {
   guest:   { label: "Guest",   icon: User,   variant: "outline" as const,  color: "text-zinc-300" },
 };
 
-export function TeamPage() {
+function isValidRole(role: string): role is keyof typeof ROLE_CONFIG {
+  return role in ROLE_CONFIG;
+}
+
+export function TeamPage(): React.ReactElement {
   const [inviteModal, setInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
@@ -88,7 +92,8 @@ export function TeamPage() {
           </CardHeader>
           <div className="divide-y divide-zinc-150 dark:divide-zinc-850">
             {MEMBERS.map(m => {
-              const roleConfig = ROLE_CONFIG[m.role as keyof typeof ROLE_CONFIG] ?? ROLE_CONFIG.member;
+              const role = isValidRole(m.role) ? m.role : "member";
+              const roleConfig = ROLE_CONFIG[role];
               return (
                 <div key={m.id} className="flex items-center gap-4 px-5 py-4 hover:bg-zinc-100/30 dark:hover:bg-zinc-900/30 transition-colors group">
                   <Avatar src={m.avatar} name={m.name} size="md" className="border border-zinc-200/65" />
@@ -189,13 +194,13 @@ export function TeamPage() {
             type="email"
             placeholder="colleague@yourcompany.com"
             value={inviteEmail}
-            onChange={e => setInviteEmail(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInviteEmail(e.target.value)}
           />
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider select-none">Workspace Role</label>
             <select
               value={inviteRole}
-              onChange={e => setInviteRole(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setInviteRole(e.target.value)}
               className="w-full rounded-xl border border-zinc-250 dark:border-zinc-850 bg-white dark:bg-zinc-900 text-zinc-850 dark:text-zinc-100 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/25"
             >
               <option value="admin">Admin — full access (excludes billing settings)</option>

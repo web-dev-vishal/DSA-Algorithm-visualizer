@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { ReactElement } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { clsx } from "clsx";
 import { Menu, X, Zap, ChevronDown, Sun, Moon } from "lucide-react";
@@ -22,7 +23,7 @@ const NAV_LINKS = [
   { label: "Blog", href: "/blog" },
 ];
 
-export function MarketingNav() {
+export function MarketingNav(): ReactElement {
   const [dark, setDark] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem("algviz_dark");

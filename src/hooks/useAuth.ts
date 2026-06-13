@@ -2,7 +2,17 @@ import { useState, useEffect } from "react";
 import { authStore } from "../store/auth";
 import type { User } from "../types";
 
-export function useAuth() {
+interface UseAuthReturn {
+  user: User | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (name: string, email: string, password: string) => Promise<void>;
+  logout: () => void;
+  updateUser: (updates: Partial<User>) => void;
+  isAuthenticated: boolean;
+}
+
+export function useAuth(): UseAuthReturn {
   const [user, setUser] = useState<User | null>(() => authStore.getUser());
   const [loading, setLoading] = useState(false);
 

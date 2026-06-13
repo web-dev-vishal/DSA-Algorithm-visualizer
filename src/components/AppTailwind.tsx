@@ -1285,15 +1285,15 @@ Give a concise, 2-3 sentence friendly explanation tailored to their question. Ke
                         <div className="space-y-4">
                           {/* Tab selection for visualizer modes */}
                           <div className="flex border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-2 gap-3 text-[11px] font-semibold select-none flex-wrap">
-                            {[
+                            {([
                               { id: "grid", label: "Horizontal Grid" },
                               { id: "bars", label: "Vertical Bars" },
                               { id: "tree", label: "Binary Tree" },
                               { id: "matrix", label: "DP Grid" }
-                            ].map(tab => (
+                            ] as const).map(tab => (
                               <button
                                 key={tab.id}
-                                onClick={() => setVizMode(tab.id as any)}
+                                onClick={() => setVizMode(tab.id)}
                                 className={clsx(
                                   "pb-1.5 px-0.5 border-b-2 transition-all cursor-pointer",
                                   vizMode === tab.id

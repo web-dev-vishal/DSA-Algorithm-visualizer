@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from "react";
+import type { ReactElement } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { MarketingNav } from "./components/layout/MarketingNav";
 import { Footer } from "./components/layout/Footer";
@@ -94,7 +95,7 @@ function DashboardWrapper({ children, darkMode, onToggleDark }: { children: Reac
 }
 
 // ── Root ───────────────────────────────────────────────────────────
-export function AppRouter() {
+export function AppRouter(): ReactElement {
   const [darkMode, setDarkMode] = useState(getInitialDark);
 
   useEffect(() => {

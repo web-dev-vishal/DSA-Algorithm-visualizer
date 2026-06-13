@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, Zap, ChevronRight, Copy, Check, ChevronLeft, BookOpen, ShieldAlert, ChevronDown, Terminal, CheckCircle2 } from "lucide-react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import type { ReactElement } from "react";
+import { motion } from "framer-motion";
+import { Search, Zap, ChevronRight, Copy, Check, ChevronLeft, BookOpen, ShieldAlert, ChevronDown, Terminal } from "lucide-react";
 import { Badge } from "../../components/ui/Badge";
 
 // Sidebar structure mapping all documentation links
@@ -267,7 +268,7 @@ function CodeBlock({ code, language, id }: CodeBlockProps) {
   );
 }
 
-export function DocsPage() {
+export function DocsPage(): ReactElement {
   const [activeSlug, setActiveSlug] = useState("intro");
   const [search, setSearch] = useState("");
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -1040,7 +1041,7 @@ jobs:
                 type="search"
                 placeholder="Search articles..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-sm rounded-xl bg-white border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-550/20 text-zinc-700 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-350 transition-all shadow-sm"
               />
             </div>
@@ -1156,12 +1157,13 @@ jobs:
             <h4 className="text-[10px] font-black text-zinc-400 dark:text-zinc-550 uppercase tracking-widest">On this page</h4>
             <ul className="space-y-2 text-xs font-bold text-zinc-500 dark:text-zinc-450">
               {currentToc.map((toc, idx) => (
-                <li 
-                  key={idx} 
-                  onClick={() => scrollToAnchor(toc.id)}
-                  className="hover:text-indigo-550 dark:hover:text-indigo-400 cursor-pointer transition-colors"
-                >
-                  {toc.title}
+                <li key={idx}>
+                  <button 
+                    onClick={() => scrollToAnchor(toc.id)}
+                    className="hover:text-indigo-550 dark:hover:text-indigo-400 cursor-pointer transition-colors text-left font-bold"
+                  >
+                    {toc.title}
+                  </button>
                 </li>
               ))}
             </ul>

@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
+import type { ReactElement } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
-import { Code2, Zap, ArrowRight, Play, Star, Activity, Users, BookOpen, Search, Download, ChevronUp, ChevronDown, Filter } from "lucide-react";
+import { Code2, Zap, ArrowRight, Play, Star, Activity, Users, BookOpen, Search, Download, ChevronUp, ChevronDown } from "lucide-react";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
@@ -43,9 +44,16 @@ const STAT_CARDS = [
   { label: "Algorithms Used",  value: "12",    delta: "of 15",icon: Star,      color: "text-amber-500",   bg: "bg-amber-50 dark:bg-amber-950/60" },
 ];
 
+interface TooltipPayloadEntry {
+  stroke?: string;
+  fill?: string;
+  name?: string;
+  value?: string | number;
+}
+
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: any[];
+  payload?: TooltipPayloadEntry[];
   label?: string;
 }
 
@@ -54,7 +62,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
     return (
       <div className="bg-zinc-950/95 border border-zinc-800 text-white p-3.5 rounded-2xl shadow-xl backdrop-blur-md font-sans text-xs flex flex-col gap-1.5 select-none">
         <p className="font-bold text-zinc-400 border-b border-zinc-800 pb-1 mb-1">{label}</p>
-        {payload.map((p: any, idx: number) => (
+        {payload.map((p, idx) => (
           <p key={idx} className="flex items-center gap-2 font-mono">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.stroke || p.fill }} />
             <span className="text-zinc-350">{p.name}:</span>
@@ -67,7 +75,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   return null;
 }
 
-export function DashboardHome() {
+export function DashboardHome(): ReactElement {
   const { user } = useAuth();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";

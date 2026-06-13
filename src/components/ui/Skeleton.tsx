@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { clsx } from "clsx";
 
 interface SkeletonProps {
@@ -5,7 +6,7 @@ interface SkeletonProps {
   lines?: number;
 }
 
-export function Skeleton({ className }: SkeletonProps) {
+export function Skeleton({ className }: SkeletonProps): ReactElement {
   return (
     <div
       className={clsx(
@@ -17,7 +18,7 @@ export function Skeleton({ className }: SkeletonProps) {
   );
 }
 
-export function SkeletonCard() {
+export function SkeletonCard(): ReactElement {
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 space-y-3">
       <div className="flex items-center gap-3">
@@ -34,7 +35,7 @@ export function SkeletonCard() {
   );
 }
 
-export function SkeletonTable({ rows = 5 }: { rows?: number }) {
+export function SkeletonTable({ rows = 5 }: { rows?: number }): ReactElement {
   return (
     <div className="space-y-2">
       <Skeleton className="h-9 w-full rounded-lg" />
