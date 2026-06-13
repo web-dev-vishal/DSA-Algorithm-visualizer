@@ -98,8 +98,12 @@ export function TeamPage(): React.ReactElement {
                 <div key={m.id} className="flex items-center gap-4 px-5 py-4 hover:bg-zinc-100/30 dark:hover:bg-zinc-900/30 transition-colors group">
                   <Avatar src={m.avatar} name={m.name} size="md" className="border border-zinc-200/65" />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-bold text-zinc-900 dark:text-white truncate">{m.name}</p>
+                      <div className="sm:hidden flex items-center gap-1">
+                        <roleConfig.icon className={`w-3 h-3 ${roleConfig.color}`} />
+                        <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">{roleConfig.label}</span>
+                      </div>
                       {m.status === "invited" && (
                         <Badge variant="warning" className="text-[9px] font-bold select-none px-2 py-0.5">Pending Invite</Badge>
                       )}
@@ -112,7 +116,7 @@ export function TeamPage(): React.ReactElement {
                   </div>
                   <p className="text-xs text-zinc-450 dark:text-zinc-500 font-medium hidden md:block whitespace-nowrap">Joined {m.joinedAt}</p>
                   {m.role !== "owner" && (
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5">
+                    <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-1.5">
                       <Button variant="ghost" size="icon" className="w-8 h-8 hover:bg-zinc-150/40">
                         <MoreHorizontal className="w-4 h-4 text-zinc-450" />
                       </Button>
@@ -133,7 +137,7 @@ export function TeamPage(): React.ReactElement {
           </CardHeader>
           <CardBody className="p-6">
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+              <table className="w-full text-xs min-w-[550px]">
                 <thead>
                   <tr className="text-left border-b border-zinc-150 dark:border-zinc-850 pb-2 select-none">
                     <th className="pb-3 pr-6 text-zinc-450 dark:text-zinc-500 font-bold uppercase tracking-wider">Permission Scope</th>
@@ -201,7 +205,7 @@ export function TeamPage(): React.ReactElement {
             <select
               value={inviteRole}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setInviteRole(e.target.value)}
-              className="w-full rounded-xl border border-zinc-250 dark:border-zinc-850 bg-white dark:bg-zinc-900 text-zinc-850 dark:text-zinc-100 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/25"
+              className="w-full rounded-xl border border-zinc-250 dark:border-zinc-850 bg-white dark:bg-zinc-900 text-zinc-850 dark:text-zinc-100 px-3.5 py-3 sm:py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/25"
             >
               <option value="admin">Admin — full access (excludes billing settings)</option>
               <option value="manager">Manager — can invite new collaborators</option>

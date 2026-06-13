@@ -91,6 +91,8 @@ export function SettingsPage({ defaultTab = "profile" }: { defaultTab?: string }
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
+            aria-label={t.label}
+            title={t.label}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all relative ${
               tab === t.id
                 ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm"
@@ -148,7 +150,10 @@ export function SettingsPage({ defaultTab = "profile" }: { defaultTab?: string }
                   <Input label="Organization" placeholder="e.g. Acme Inc." className="shadow-sm" />
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-zinc-500 dark:text-zinc-405 uppercase tracking-wider select-none">Preferred Timezone</label>
-                    <select className="w-full rounded-xl border border-zinc-250 dark:border-zinc-850 bg-white dark:bg-zinc-900 text-zinc-850 dark:text-zinc-100 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/25 shadow-sm">
+                    <select
+                      aria-label="Preferred Timezone"
+                      className="w-full rounded-xl border border-zinc-250 dark:border-zinc-850 bg-white dark:bg-zinc-900 text-zinc-850 dark:text-zinc-100 px-3.5 py-3 sm:py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/25 shadow-sm"
+                    >
                       <option>UTC+05:30 India Standard Time</option>
                       <option>UTC−05:00 Eastern Standard Time</option>
                       <option>UTC+00:00 London UTC</option>

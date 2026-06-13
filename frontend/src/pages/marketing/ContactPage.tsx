@@ -65,7 +65,7 @@ export function ContactPage() {
                     <select
                       value={subject}
                       onChange={e => setSubject(e.target.value)}
-                      className="w-full rounded-[10px] border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      className="w-full rounded-[10px] border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-3 py-3 sm:py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                     >
                       <option value="general">General inquiry</option>
                       <option value="sales">Sales / Enterprise</option>
@@ -81,7 +81,7 @@ export function ContactPage() {
                       required
                       rows={5}
                       placeholder="Tell us how we can help…"
-                      className="w-full rounded-[10px] border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 resize-none"
+                      className="w-full rounded-[10px] border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-3 py-3 sm:py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 resize-none"
                     />
                   </div>
                   <Button type="submit" variant="primary" className="w-full">Send message</Button>

@@ -157,7 +157,7 @@ export function HistoryPage() {
       {/* History Table */}
       <Card className="overflow-hidden glass-card border-zinc-200/60 dark:border-zinc-850/60 shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[650px]">
             <thead>
               <tr className="bg-zinc-100/40 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-850 select-none">
                 <th className="w-10 px-4 py-3.5 text-center">
@@ -252,7 +252,12 @@ export function HistoryPage() {
                           </div>
                           <div>
                             <p className="font-bold text-zinc-900 dark:text-white text-sm">{h.name}</p>
-                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium">{h.category}</p>
+                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium sm:hidden">
+                              {h.category} · {h.lang} · {h.complexity}
+                            </p>
+                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium hidden sm:block">
+                              {h.category}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -271,7 +276,7 @@ export function HistoryPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                           <Link to="/app">
                             <Button variant="ghost" size="icon" className="w-8 h-8" title="Replay run"><Play className="w-3.5 h-3.5 fill-current text-indigo-500" /></Button>
                           </Link>

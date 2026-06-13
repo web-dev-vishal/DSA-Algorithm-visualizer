@@ -137,7 +137,7 @@ export function APIPage() {
                     <p>Created {k.created}</p>
                     <p className="mt-0.5">Used {k.lastUsed} · {k.calls} calls</p>
                   </div>
-                  <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => setRevealedKey(v => v === k.id ? null : k.id)} title={isRevealed ? "Mask token" : "Reveal token"}>
                       {isRevealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </Button>
@@ -212,7 +212,7 @@ export function APIPage() {
                   </div>
                 </div>
                 <Badge variant={w.status === "active" ? "success" : "warning"} className="font-bold select-none py-0.5">{w.status}</Badge>
-                <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <Button variant="ghost" size="sm" className="text-xs font-bold">{w.status === "active" ? "Pause" : "Resume"}</Button>
                   <Button variant="destructive" size="sm" className="text-xs font-bold px-3 py-1.5">Delete</Button>
                 </div>

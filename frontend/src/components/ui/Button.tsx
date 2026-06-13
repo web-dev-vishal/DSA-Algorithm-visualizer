@@ -18,10 +18,10 @@ const buttonVariants = cva(
         outline: "bg-transparent border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-950",
       },
       size: {
-        sm: "text-xs px-3 py-1.5 h-7",
-        md: "text-sm px-4 py-2 h-9",
+        sm: "text-xs px-3 py-1.5 h-11 sm:h-7",
+        md: "text-sm px-4 py-2 h-11 sm:h-9",
         lg: "text-sm px-6 py-2.5 h-11",
-        icon: "h-9 w-9 p-0",
+        icon: "h-11 w-11 sm:h-9 sm:w-9 p-0",
       },
     },
     defaultVariants: {

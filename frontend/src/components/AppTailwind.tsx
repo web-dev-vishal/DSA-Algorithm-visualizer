@@ -1133,7 +1133,7 @@ Give a concise, 2-3 sentence friendly explanation tailored to their question. Ke
                 value={customInput}
                 onChange={(e) => setCustomInput(e.target.value)}
                 placeholder="e.g. 5, 3, 8, 1, 2"
-                className="rounded-xl border border-zinc-250 dark:border-zinc-850 bg-white dark:bg-zinc-900 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-zinc-850 dark:text-zinc-100 shadow-sm font-mono"
+                className="rounded-xl border border-zinc-250 dark:border-zinc-850 bg-white dark:bg-zinc-900 px-3.5 py-3 sm:py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-zinc-850 dark:text-zinc-100 shadow-sm font-mono"
               />
             </div>
 
@@ -1144,7 +1144,7 @@ Give a concise, 2-3 sentence friendly explanation tailored to their question. Ke
                 id="model-select"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                className="rounded-xl border border-zinc-250 dark:border-zinc-850 bg-white dark:bg-zinc-900 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-zinc-850 dark:text-zinc-100 shadow-sm"
+                className="rounded-xl border border-zinc-250 dark:border-zinc-850 bg-white dark:bg-zinc-900 px-3.5 py-3 sm:py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-zinc-850 dark:text-zinc-100 shadow-sm"
               >
                 {GROQ_MODELS.map(m => (
                   <option key={m.id} value={m.id}>{m.label}</option>
@@ -1337,7 +1337,7 @@ Give a concise, 2-3 sentence friendly explanation tailored to their question. Ke
                       <button
                         onClick={handlePlay}
                         className={clsx(
-                          "font-bold text-xs py-2 px-5 rounded-xl shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all select-none min-w-[7.2rem] text-white",
+                          "font-bold text-xs py-3 sm:py-2 px-5 rounded-xl shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all select-none min-w-[7.2rem] text-white",
                           playing ? "bg-amber-500 hover:bg-amber-600 shadow-amber-500/15" : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-650/15"
                         )}
                         title={playing ? "Pause execution (Space)" : "Play execution (Space)"}
@@ -1348,13 +1348,13 @@ Give a concise, 2-3 sentence friendly explanation tailored to their question. Ke
                       </button>
 
                       <div className="flex items-center gap-1.5">
-                        <button onClick={goBack} disabled={stepIdx === 0} className="border border-zinc-200 text-zinc-650 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed font-bold text-xs py-2 px-3.5 rounded-xl cursor-pointer active:scale-95 transition-all dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-850/50" title="Step back (←)" type="button">
+                        <button onClick={goBack} disabled={stepIdx === 0} className="border border-zinc-200 text-zinc-650 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed font-bold text-xs py-3 sm:py-2 px-3.5 rounded-xl cursor-pointer active:scale-95 transition-all dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-850/50" title="Step back (←)" type="button">
                           <ChevronLeft className="w-3.5 h-3.5" /> Back
                         </button>
-                        <button onClick={goForward} disabled={stepIdx >= steps.length - 1} className="border border-zinc-200 text-zinc-650 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed font-bold text-xs py-2 px-3.5 rounded-xl cursor-pointer active:scale-95 transition-all dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-850/50" title="Step forward (→)" type="button">
+                        <button onClick={goForward} disabled={stepIdx >= steps.length - 1} className="border border-zinc-200 text-zinc-650 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed font-bold text-xs py-3 sm:py-2 px-3.5 rounded-xl cursor-pointer active:scale-95 transition-all dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-850/50" title="Step forward (→)" type="button">
                           Next <ChevronRight className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={resetViz} className="border border-zinc-200 text-zinc-650 hover:bg-zinc-100 font-bold text-xs py-2 px-3.5 rounded-xl cursor-pointer active:scale-95 transition-all dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-850/50" title="Reset (R)" type="button">
+                        <button onClick={resetViz} className="border border-zinc-200 text-zinc-650 hover:bg-zinc-100 font-bold text-xs py-3 sm:py-2 px-3.5 rounded-xl cursor-pointer active:scale-95 transition-all dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-850/50" title="Reset (R)" type="button">
                           <RotateCcw className="w-3.5 h-3.5" /> Reset
                         </button>
                       </div>

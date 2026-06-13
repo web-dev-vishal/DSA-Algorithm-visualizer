@@ -314,7 +314,7 @@ export function DashboardHome(): ReactElement {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[650px]">
               <thead>
                 <tr className="bg-zinc-50/50 dark:bg-zinc-900/40 border-b border-zinc-150 dark:border-zinc-850 select-none text-zinc-400 font-bold uppercase tracking-wider font-mono">
                   {[

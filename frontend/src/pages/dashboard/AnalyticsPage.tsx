@@ -66,13 +66,13 @@ export function AnalyticsPage() {
       {/* Title Header */}
       <motion.div 
         variants={itemVariants}
-        className="flex items-center justify-between border-b border-zinc-200/60 dark:border-zinc-850 pb-5"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200/60 dark:border-zinc-850 pb-5"
       >
         <div>
           <h1 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">System Analytics</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-450 mt-1 font-medium">Usage logs, metrics, and compilation conversion funnels.</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-455 mt-1 font-medium">Usage logs, metrics, and compilation conversion funnels.</p>
         </div>
-        <Badge variant="primary" className="shadow-sm font-semibold">Last 30 Days</Badge>
+        <Badge variant="primary" className="shadow-sm font-semibold w-fit">Last 30 Days</Badge>
       </motion.div>
 
       {/* KPI Cards */}

@@ -48,7 +48,7 @@ export function Modal({ open, onClose, title, description, children, size = "md"
       {/* Panel */}
       <div
         className={clsx(
-          "relative w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800",
+          "relative w-full max-h-[calc(100dvh-2rem)] flex flex-col bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800",
           "animate-[scaleIn_0.15s_ease_both]",
           sizes[size]
         )}
@@ -66,7 +66,7 @@ export function Modal({ open, onClose, title, description, children, size = "md"
           </div>
         )}
         {/* Body */}
-        <div className="p-5">{children}</div>
+        <div className="p-5 overflow-y-auto flex-1">{children}</div>
         {/* Footer */}
         {footer && (
           <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-zinc-100 dark:border-zinc-800">
